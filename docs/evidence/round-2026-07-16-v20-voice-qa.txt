@@ -1,0 +1,12 @@
+PASS  voice service health check
+PASS  voice WAV generated
+PASS  voice generation completes within timeout
+INFO  generation_seconds=5.36
+PASS  voice WAV duration is plausible
+PASS  voice peak is automatically normalized
+PASS  voice WAV is not silent
+INFO  duration_seconds=4.70 peak_dbfs=-1.1 rms_dbfs=-19.6
+PASS  SoundPlayer playback succeeds
+PASS  temporary voice WAV is cleaned
+PASS  playback failure degrades without throwing
+PASS  non-WAV payload is rejected

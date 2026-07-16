@@ -1,0 +1,6 @@
+PASS  voice service becomes ready in the UI
+PASS  voice dock reports speaking
+PASS  waveform activates during speech
+PASS  speaking state is reached
+PASS  voice test returns to an interactive state
+PASS  voice dock leaves speaking state

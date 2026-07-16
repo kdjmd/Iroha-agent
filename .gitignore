@@ -1,0 +1,59 @@
+# Local toolchains and caches
+.toolchain/
+.gradle-user/
+.gradle/
+**/.gradle/
+.idea/
+.vs/
+
+# Build outputs
+package/
+tmp/
+outputs/
+desktop/dist/
+desktop/dist-*/
+android/build/
+android/app/build/
+**/build/
+**/bin/
+**/obj/
+
+# Runtime and release artifacts
+*.exe
+*.apk
+*.aab
+*.zip
+*.7z
+*.rar
+*.msi
+
+# Local configuration and user data
+settings.json
+memory.json
+crash.log
+.env
+.env.*
+*.user
+*.suo
+
+# Voice models, references and generated audio
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.safetensors
+*.wav
+*.mp3
+*.flac
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.cache
+
+# OS and editor files
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
