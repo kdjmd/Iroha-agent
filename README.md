@@ -2,7 +2,7 @@
 
 Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，支持 DeepSeek 对话、本地 GPT-SoVITS 日语语音、自然逐帧角色动画、长期记忆、提示词压缩与会话管理。
 
-> 这是非官方同人性质的技术项目。角色、视觉素材和语音资源的使用与再分发必须由使用者自行确认授权。未确认前建议保持私有仓库和私有 Release。
+> gsv语音模型来自B站up云游雨散大佬的分享，所有角色立绘与背景等图像元素来自于chatgpt图像生成。
 
 ![Iroha Agent Windows 界面](docs/evidence/round-2026-07-16-v21-standard.png)
 
