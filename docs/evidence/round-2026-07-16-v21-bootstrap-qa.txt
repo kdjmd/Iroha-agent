@@ -1,0 +1,21 @@
+PASS  first-run matching succeeds
+PASS  existing external runtime is reused
+PASS  voice package is imported automatically
+PASS  managed GPT-SoVITS config is generated
+PASS  generated config defaults to CPU compatibility mode
+PASS  generated config defaults to full precision
+PASS  reference audio is imported
+PASS  reference language is normalized to ja
+PASS  reference transcript is imported
+PASS  generated config stays in managed app data
+PASS  external runtime remains untouched after matching
+PASS  source voice package remains byte-identical
+PASS  matching emits model import progress
+PASS  forced redeploy succeeds
+PASS  bundled runtime archive is deployed
+PASS  redeployed runtime stays in managed app data
+PASS  stale managed runtime content is replaced
+PASS  forced redeploy never removes the external runtime
+PASS  forced redeploy never modifies the source voice package
+PASS  redeploy emits runtime deployment progress
+PASS  redeploy emits matching completion progress

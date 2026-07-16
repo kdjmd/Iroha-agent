@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -10,6 +11,24 @@ namespace IrohaAgentDesktop
 {
     internal static class AnimationQaProgram
     {
+        private const int DwmExtendedFrameBounds = 9;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeRect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetWindowAttribute(
+            IntPtr windowHandle,
+            int attribute,
+            out NativeRect value,
+            int valueSize);
+
         [DllImport("user32.dll")]
         private static extern bool PrintWindow(IntPtr windowHandle, IntPtr targetDc, uint flags);
 
@@ -18,11 +37,20 @@ namespace IrohaAgentDesktop
         {
             string output = GetArgument(args, "--output");
             string requestedState = GetArgument(args, "--state") ?? "idle";
+            string captureMode = GetArgument(args, "--capture") ?? "printwindow";
             int width = GetIntegerArgument(args, "--width", 1280);
             int height = GetIntegerArgument(args, "--height", 720);
             if (string.IsNullOrWhiteSpace(output))
             {
                 throw new ArgumentException("--output is required");
+            }
+
+            string missingAsset;
+            if (!RequiredVisualAssets.TryValidate(out missingAsset))
+            {
+                Console.Error.WriteLine("PACKAGED_UI_QA_BLOCKED_MISSING_ASSET: " + missingAsset);
+                Environment.Exit(3);
+                return;
             }
 
             Application.EnableVisualStyles();
@@ -43,7 +71,10 @@ namespace IrohaAgentDesktop
                 form.StartPosition = FormStartPosition.Manual;
                 form.Location = new Point(24, 24);
                 form.Size = new Size(width, height);
+                form.TopMost = true;
                 form.Show();
+                form.Activate();
+                form.BringToFront();
                 Application.DoEvents();
 
                 ConfigureAnimationState(avatar, requestedState);
@@ -61,7 +92,7 @@ namespace IrohaAgentDesktop
                 avatar.Invalidate();
                 form.Refresh();
                 Application.DoEvents();
-                Thread.Sleep(180);
+                Thread.Sleep(600);
                 Application.DoEvents();
 
                 string directory = System.IO.Path.GetDirectoryName(output);
@@ -69,24 +100,58 @@ namespace IrohaAgentDesktop
                 {
                     System.IO.Directory.CreateDirectory(directory);
                 }
-                using (var bitmap = new Bitmap(form.Width, form.Height, PixelFormat.Format32bppArgb))
-                using (Graphics graphics = Graphics.FromImage(bitmap))
+                if (string.Equals(captureMode, "screen", StringComparison.OrdinalIgnoreCase))
                 {
-                    IntPtr hdc = graphics.GetHdc();
-                    try
-                    {
-                        if (!PrintWindow(form.Handle, hdc, 2))
-                        {
-                            throw new InvalidOperationException("PrintWindow failed");
-                        }
-                    }
-                    finally
-                    {
-                        graphics.ReleaseHdc(hdc);
-                    }
-                    bitmap.Save(output, ImageFormat.Png);
+                    CaptureCompositedWindow(form, output);
+                }
+                else
+                {
+                    CapturePrintWindow(form, output);
                 }
                 form.Close();
+            }
+        }
+
+        private static void CapturePrintWindow(Form form, string output)
+        {
+            using (var bitmap = new Bitmap(form.Width, form.Height, PixelFormat.Format32bppArgb))
+            using (Graphics graphics = Graphics.FromImage(bitmap))
+            {
+                IntPtr hdc = graphics.GetHdc();
+                try
+                {
+                    if (!PrintWindow(form.Handle, hdc, 2))
+                    {
+                        throw new InvalidOperationException("PrintWindow failed.");
+                    }
+                }
+                finally
+                {
+                    graphics.ReleaseHdc(hdc);
+                }
+                bitmap.Save(output, ImageFormat.Png);
+            }
+        }
+
+        private static void CaptureCompositedWindow(Form form, string output)
+        {
+            NativeRect nativeBounds;
+            int dwmResult = DwmGetWindowAttribute(
+                form.Handle,
+                DwmExtendedFrameBounds,
+                out nativeBounds,
+                Marshal.SizeOf(typeof(NativeRect)));
+            if (dwmResult != 0 || nativeBounds.Right <= nativeBounds.Left || nativeBounds.Bottom <= nativeBounds.Top)
+            {
+                throw new InvalidOperationException("Unable to resolve the physical DWM window bounds for QA capture.");
+            }
+            Point screenOrigin = new Point(nativeBounds.Left, nativeBounds.Top);
+            Size captureSize = new Size(nativeBounds.Right - nativeBounds.Left, nativeBounds.Bottom - nativeBounds.Top);
+            using (var bitmap = new Bitmap(captureSize.Width, captureSize.Height, PixelFormat.Format32bppArgb))
+            using (Graphics graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.CopyFromScreen(screenOrigin, Point.Empty, captureSize, CopyPixelOperation.SourceCopy);
+                bitmap.Save(output, ImageFormat.Png);
             }
         }
 

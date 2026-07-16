@@ -1,36 +1,83 @@
 # GitHub 上传指南
 
-本地仓库已经整理并提交到 `main` 分支。建议在 GitHub 中创建私有仓库 `IrohaAgent`，不要勾选自动生成 README、`.gitignore` 或 License，以免首次推送产生冲突。
+本仓库是 Windows-only 源码仓库。建议先创建私有仓库 `IrohaAgent`，确认角色、图片和语音素材授权后再决定是否公开。
 
-当前已连接的 GitHub 账号为 `eistinlandfrank`。
+当前准备使用的 GitHub 账号为 `eistinlandfrank`。
 
-仓库包含角色和语音相关元数据，首次发布请保持私有；确认素材授权后再决定是否公开。
+## 1. 创建空仓库
 
-## 命令行上传
+在 GitHub 网页创建空的私有仓库，不要自动生成 README、`.gitignore` 或 License，避免首次推送冲突。
 
-在 GitHub 网页创建空的私有仓库后，在本目录执行：
+## 2. 推送源码
+
+在本项目根目录执行：
 
 ```powershell
 git remote add origin https://github.com/eistinlandfrank/IrohaAgent.git
 git push -u origin main
 ```
 
-首次推送时，Git Credential Manager 可能打开浏览器要求登录或授权。完成后回到终端等待推送结束。
+如果已经存在 `origin`：
 
-## GitHub Desktop 上传
+```powershell
+git remote set-url origin https://github.com/eistinlandfrank/IrohaAgent.git
+git push -u origin main
+```
 
-1. 安装并登录 GitHub Desktop。
-2. 选择 `File -> Add local repository`。
-3. 指向桌面的 `IrohaAgent-GitHub` 文件夹。
-4. 点击 `Publish repository`。
-5. 仓库名填写 `IrohaAgent`，取消公开选项后发布。
+也可以在 GitHub Desktop 中选择 `File -> Add local repository`，指向本目录后点击 `Publish repository`。
 
-## 上传 Release
+## 3. 生成 Windows Release
 
-源码推送成功后，在 GitHub 仓库中创建 `v2.0.0` Release，并从桌面的 `IrohaAgent-GitHub-Releases` 文件夹添加：
+轻量 Portable：
 
-- `IrohaAgent-Windows-v2.0.zip`
-- `IrohaAgent-Android-v0.1.0-debug.apk`（仅作为原型，并明确标注）
+```powershell
+.\tools\build-windows-release.ps1 -Version 2.1.0
+```
+
+完整 FullVoice：
+
+```powershell
+.\tools\build-windows-release.ps1 `
+  -Version 2.1.0 `
+  -FullVoice `
+  -RuntimeArchive "C:\path\to\GPT-SoVITS-runtime.7z" `
+  -VoicePackage "C:\path\to\iroha-model.zip"
+```
+
+默认输出到桌面：
+
+```text
+IrohaAgent-GitHub-Releases\v2.1.0\
+```
+
+## 4. 创建 Release
+
+在 GitHub 中创建标签与 Release：
+
+```text
+Tag: v2.1.0
+Title: Iroha Agent v2.1.0 - Windows
+```
+
+上传以下附件：
+
+- `IrohaAgent-Windows-v2.1.0-Portable.zip`
+- `IrohaAgent-Windows-v2.1.0-FullVoice.7z.001`
+- `IrohaAgent-Windows-v2.1.0-FullVoice.7z.002`
+- 其余所有 FullVoice 分卷
+- `RELEASE_NOTES.txt`
 - `SHA256SUMS.txt`
 
-不要把 EXE、APK、模型权重或发布 ZIP 直接提交进 Git 历史。
+用户必须下载全部 FullVoice 分卷，并使用 7-Zip 从 `.001` 解压。
+
+## 5. 发布前核查
+
+- `git status` 只包含预期源码与文档变更。
+- 仓库中没有 `settings.json`、`memory.json`、`.env`、API Key 或聊天记录。
+- 仓库中没有 `.ckpt`、`.pth`、`.wav`、完整运行时或 Release 分卷。
+- `desktop\build.ps1` 编译通过。
+- 功能、部署和语音 QA 报告全部通过。
+- `SHA256SUMS.txt` 与本地附件一致。
+- 已确认 FullVoice 中角色与语音资源的再分发授权。
+
+不要把 EXE、模型权重、完整运行时、发布 ZIP/7Z 或分卷直接提交进 Git 历史，也不要用 Git LFS 绕过授权和 Release 边界。

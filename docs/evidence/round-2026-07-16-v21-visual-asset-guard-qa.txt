@@ -1,0 +1,6 @@
+PASS  packaged UI QA blocks startup when vn-room-bg.png is missing
+PASS  packaged UI QA exits with dedicated code 3 when a required visual asset is missing
+PASS  packaged UI QA does not create a screenshot when required assets are missing
+PASS  packaged UI QA blocks startup when vn-room-bg.png cannot be decoded
+PASS  packaged UI QA does not create a screenshot when a required image is corrupt
+PASS  production startup validates both vn-room-bg.png and iroha-portrait.png before MainForm is created

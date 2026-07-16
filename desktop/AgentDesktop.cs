@@ -15,6 +15,74 @@ using System.Windows.Forms;
 
 namespace IrohaAgentDesktop
 {
+    internal static class RequiredVisualAssets
+    {
+        private static readonly string[] RequiredPaths =
+        {
+            Path.Combine("assets", "ui", "vn-room-bg.png"),
+            Path.Combine("assets", "character", "iroha-portrait.png")
+        };
+
+        public static string Find(string relativePath)
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string[] candidates =
+            {
+                Path.Combine(baseDir, relativePath),
+                Path.GetFullPath(Path.Combine(baseDir, "..", relativePath)),
+                Path.GetFullPath(Path.Combine(baseDir, "..", "..", relativePath)),
+                Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", relativePath))
+            };
+            foreach (string candidate in candidates)
+            {
+                if (File.Exists(candidate)) return candidate;
+            }
+            return null;
+        }
+
+        public static bool TryValidate(out string missingAsset)
+        {
+            foreach (string relativePath in RequiredPaths)
+            {
+                string resolvedPath = Find(relativePath);
+                if (string.IsNullOrEmpty(resolvedPath))
+                {
+                    missingAsset = relativePath;
+                    return false;
+                }
+                try
+                {
+                    using (Image image = Image.FromFile(resolvedPath))
+                    {
+                        if (image.Width <= 0 || image.Height <= 0)
+                        {
+                            missingAsset = relativePath + " (invalid image dimensions)";
+                            return false;
+                        }
+                    }
+                }
+                catch
+                {
+                    missingAsset = relativePath + " (unreadable image)";
+                    return false;
+                }
+            }
+            missingAsset = null;
+            return true;
+        }
+
+        public static void EnsurePresent()
+        {
+            string missingAsset;
+            if (!TryValidate(out missingAsset))
+            {
+                throw new InvalidOperationException(
+                    "Required visual asset is missing: " + missingAsset +
+                    ". Keep IrohaAgent.exe beside the packaged assets folder.");
+            }
+        }
+    }
+
     internal static class Program
     {
         [STAThread]
@@ -32,6 +100,17 @@ namespace IrohaAgentDesktop
             {
                 ShowStartupError(e.ExceptionObject as Exception);
             };
+            string missingAsset;
+            if (!RequiredVisualAssets.TryValidate(out missingAsset))
+            {
+                MessageBox.Show(
+                    "界面资源不完整，彩叶 Agent 无法安全启动。\r\n\r\n" +
+                    "请重新解压完整安装包，不要只复制 IrohaAgent.exe。",
+                    "彩叶 Iroha Agent",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
             Application.Run(new MainForm());
         }
 
@@ -63,11 +142,11 @@ namespace IrohaAgentDesktop
 
     public sealed class AppSettings
     {
-        public static readonly string VoiceRuntimeRoot = ResolveVoiceRuntimeRoot();
+        public static readonly string DefaultVoiceRuntimeRoot = ResolveVoiceRuntimeRoot();
         public static readonly string DefaultVoiceRefAudioPath = ResolveVoiceRefAudioPath();
         public const string DefaultVoicePromptText = "さすがにここは危ないかもいや、警察に届けるか";
         public const string DefaultVoicePromptLang = "ja";
-        public const string VoiceRuntimeConfig = "GPT_SoVITS/configs/tts_infer_iroha.yaml";
+        public const string DefaultVoiceRuntimeConfig = "GPT_SoVITS/configs/tts_infer_iroha.yaml";
 
         private static string ResolveVoiceRuntimeRoot()
         {
@@ -89,16 +168,29 @@ namespace IrohaAgentDesktop
         {
             string configured = Environment.GetEnvironmentVariable("IROHA_VOICE_REF_AUDIO");
             if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim().Trim('"');
-            return Path.Combine(VoiceRuntimeRoot, "voices", "iroha", "ref.wav");
+            return Path.Combine(DefaultVoiceRuntimeRoot, "voices", "iroha", "ref.wav");
+        }
+
+        private static string ResolveVoiceRuntimeConfigPath()
+        {
+            string configured = Environment.GetEnvironmentVariable("IROHA_VOICE_CONFIG");
+            if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim().Trim('"');
+            return Path.Combine(
+                DefaultVoiceRuntimeRoot,
+                DefaultVoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar));
         }
 
         public string BaseUrl { get; set; }
         public string ApiKey { get; set; }
         public string Model { get; set; }
         public string VoiceServerUrl { get; set; }
+        public string VoiceRuntimeRoot { get; set; }
+        public string VoiceRuntimeConfigPath { get; set; }
         public string VoiceRefAudioPath { get; set; }
         public string VoicePromptText { get; set; }
         public string VoicePromptLang { get; set; }
+        public bool VoiceAutoMatched { get; set; }
+        public int VoiceMatchVersion { get; set; }
         public bool VoiceEnabled { get; set; }
         public bool MemoryEnabled { get; set; }
         public bool AutoOptimizePrompt { get; set; }
@@ -109,9 +201,13 @@ namespace IrohaAgentDesktop
             ApiKey = "";
             Model = "deepseek-v4-flash";
             VoiceServerUrl = "http://127.0.0.1:9880";
+            VoiceRuntimeRoot = DefaultVoiceRuntimeRoot;
+            VoiceRuntimeConfigPath = ResolveVoiceRuntimeConfigPath();
             VoiceRefAudioPath = DefaultVoiceRefAudioPath;
             VoicePromptText = DefaultVoicePromptText;
             VoicePromptLang = DefaultVoicePromptLang;
+            VoiceAutoMatched = false;
+            VoiceMatchVersion = 0;
             VoiceEnabled = true;
             MemoryEnabled = true;
             AutoOptimizePrompt = false;
@@ -136,6 +232,11 @@ namespace IrohaAgentDesktop
         {
             get
             {
+                string configured = Environment.GetEnvironmentVariable("IROHA_APP_DATA_ROOT");
+                if (!string.IsNullOrWhiteSpace(configured))
+                {
+                    return Path.GetFullPath(configured.Trim().Trim('"'));
+                }
                 return Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "IrohaLocalAgent");
@@ -161,6 +262,17 @@ namespace IrohaAgentDesktop
                 AppSettings settings = Serializer.Deserialize<AppSettings>(json);
                 if (settings == null) return new AppSettings();
                 if (string.IsNullOrWhiteSpace(settings.Model)) settings.Model = "deepseek-v4-flash";
+                if (string.IsNullOrWhiteSpace(settings.VoiceServerUrl)) settings.VoiceServerUrl = "http://127.0.0.1:9880";
+                if (string.IsNullOrWhiteSpace(settings.VoiceRuntimeRoot)) settings.VoiceRuntimeRoot = AppSettings.DefaultVoiceRuntimeRoot;
+                if (string.IsNullOrWhiteSpace(settings.VoiceRuntimeConfigPath))
+                {
+                    settings.VoiceRuntimeConfigPath = Path.Combine(
+                        settings.VoiceRuntimeRoot,
+                        AppSettings.DefaultVoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar));
+                }
+                if (string.IsNullOrWhiteSpace(settings.VoiceRefAudioPath)) settings.VoiceRefAudioPath = AppSettings.DefaultVoiceRefAudioPath;
+                if (string.IsNullOrWhiteSpace(settings.VoicePromptText)) settings.VoicePromptText = AppSettings.DefaultVoicePromptText;
+                if (string.IsNullOrWhiteSpace(settings.VoicePromptLang)) settings.VoicePromptLang = AppSettings.DefaultVoicePromptLang;
                 return settings;
             }
             catch
@@ -244,6 +356,10 @@ namespace IrohaAgentDesktop
         private AppSettings settings;
         private AgentMemory memory;
         private Task<bool> voiceStartupTask;
+        private Process voiceServiceProcess;
+        private VoiceDeploymentForm voiceDeploymentForm;
+        private bool isVoiceSetupRunning;
+        private string voiceSetupMessage;
         private AvatarControl avatar;
         private RichTextBox chatLog;
         private TextBox inputBox;
@@ -303,6 +419,7 @@ namespace IrohaAgentDesktop
         private Button drawerCloseButton;
         private Button drawerMemoryButton;
         private Button drawerAdvancedButton;
+        private Button drawerRedeployVoiceButton;
         private CheckBox drawerVoiceEnabledBox;
         private CheckBox drawerMemoryEnabledBox;
         private CheckBox drawerOptimizeBox;
@@ -320,6 +437,7 @@ namespace IrohaAgentDesktop
 
         public MainForm()
         {
+            RequiredVisualAssets.EnsurePresent();
             settings = SettingsStore.Load();
             memory = MemoryStore.Load();
             Text = "彩叶 Iroha Agent";
@@ -735,6 +853,11 @@ namespace IrohaAgentDesktop
             drawerOptimizeBox.CheckedChanged += DrawerOption_CheckedChanged;
             settingsDrawer.Controls.Add(drawerOptimizeBox);
 
+            drawerRedeployVoiceButton = CreateGlassButton("重新部署语音", false);
+            ((GlassButton)drawerRedeployVoiceButton).OpaqueBackfill = true;
+            drawerRedeployVoiceButton.Click += RedeployVoiceButton_Click;
+            settingsDrawer.Controls.Add(drawerRedeployVoiceButton);
+
             drawerMemoryButton = CreateGlassButton("管理记忆", false);
             ((GlassButton)drawerMemoryButton).OpaqueBackfill = true;
             drawerMemoryButton.Click += MemoryButton_Click;
@@ -948,7 +1071,15 @@ namespace IrohaAgentDesktop
             LayoutRightToolRail();
 
             int drawerWidth = Math.Min(390, Math.Max(330, ScaleX(390, sx)));
-            settingsDrawer.SetBounds(w - drawerWidth - ScaleX(110, sx), ScaleY(86, sy), drawerWidth, h - ScaleY(186, sy));
+            int drawerGap = Math.Max(12, ScaleX(14, sx));
+            int drawerY = ScaleY(86, sy);
+            int drawerRight = rightToolRail.Left - drawerGap;
+            int drawerBottom = voiceDock.Top - drawerGap;
+            settingsDrawer.SetBounds(
+                drawerRight - drawerWidth,
+                drawerY,
+                drawerWidth,
+                Math.Max(420, drawerBottom - drawerY));
             LayoutSettingsDrawer();
 
             int footerHeight = Math.Max(20, ScaleY(27, sy));
@@ -1004,7 +1135,14 @@ namespace IrohaAgentDesktop
             LayoutRightToolRail();
 
             int drawerWidth = Math.Min(340, Math.Max(310, w / 3));
-            settingsDrawer.SetBounds(w - drawerWidth - railWidth - 18, topHeight + 10, drawerWidth, h - topHeight - 34);
+            int drawerY = topHeight + 10;
+            int drawerRight = rightToolRail.Left - 10;
+            int drawerBottom = voiceDock.Top - 10;
+            settingsDrawer.SetBounds(
+                drawerRight - drawerWidth,
+                drawerY,
+                drawerWidth,
+                Math.Max(380, drawerBottom - drawerY));
             LayoutSettingsDrawer();
 
             footerBar.SetBounds(0, h - 26, w, 26);
@@ -1202,8 +1340,8 @@ namespace IrohaAgentDesktop
             if (quickActionBar == null || quickActionButtons.Count == 0) return;
             int gap = 10;
             bool compact = quickActionBar.Height < 40;
-            int y = compact ? 4 : 7;
-            int height = compact ? Math.Max(26, quickActionBar.Height - 8) : Math.Max(34, quickActionBar.Height - 14);
+            int y = 3;
+            int height = compact ? Math.Max(26, quickActionBar.Height - 6) : Math.Max(36, quickActionBar.Height - 6);
             int width = Math.Max(92, (quickActionBar.Width - gap * (quickActionButtons.Count + 1)) / quickActionButtons.Count);
             for (int i = 0; i < quickActionButtons.Count; i++)
             {
@@ -1513,30 +1651,42 @@ namespace IrohaAgentDesktop
         private void LayoutSettingsDrawer()
         {
             if (settingsDrawer == null) return;
-            int pad = 24;
+            bool compact = settingsDrawer.Height < 500;
+            int pad = compact ? 20 : 24;
             int width = Math.Max(120, settingsDrawer.Width - pad * 2);
             Control title = settingsDrawer.Controls.Count > 0 ? settingsDrawer.Controls[0] : null;
-            if (title != null) title.SetBounds(pad, 20, width - 52, 34);
-            drawerCloseButton.SetBounds(settingsDrawer.Width - pad - 40, 20, 40, 34);
-            settingsDrawerHintLabel.SetBounds(pad, 58, width, 34);
+            int titleY = compact ? 16 : 20;
+            if (title != null) title.SetBounds(pad, titleY, width - 52, 34);
+            drawerCloseButton.SetBounds(settingsDrawer.Width - pad - 40, titleY, 40, 34);
+            settingsDrawerHintLabel.SetBounds(pad, compact ? 49 : 58, width, compact ? 28 : 34);
 
             var apiLabel = FindOrCreateDrawerLabel("DeepSeek API Key", "drawer-api-label");
-            apiLabel.SetBounds(pad, 104, width, 22);
-            drawerApiKeyBox.SetBounds(pad, 132, width, 30);
-            drawerSaveButton.SetBounds(pad, 176, (width - 12) / 2, 38);
-            drawerTestButton.SetBounds(pad + (width - 12) / 2 + 12, 176, (width - 12) / 2, 38);
+            int apiLabelY = compact ? 82 : 104;
+            int apiBoxY = compact ? 106 : 132;
+            int actionY = compact ? 142 : 176;
+            int actionHeight = compact ? 34 : 38;
+            apiLabel.SetBounds(pad, apiLabelY, width, 22);
+            drawerApiKeyBox.SetBounds(pad, apiBoxY, width, compact ? 28 : 30);
+            drawerSaveButton.SetBounds(pad, actionY, (width - 12) / 2, actionHeight);
+            drawerTestButton.SetBounds(pad + (width - 12) / 2 + 12, actionY, (width - 12) / 2, actionHeight);
 
             var optionLabel = FindOrCreateDrawerLabel("陪伴能力", "drawer-option-label");
-            optionLabel.SetBounds(pad, 232, width, 22);
-            int optionY = 262;
+            int optionLabelY = compact ? 185 : 232;
+            int optionY = compact ? 211 : 262;
+            int optionHeight = compact ? 30 : 34;
+            optionLabel.SetBounds(pad, optionLabelY, width, 22);
             int optionW = Math.Max(112, (width - 12) / 2);
-            drawerVoiceEnabledBox.SetBounds(pad, optionY, optionW, 34);
-            drawerMemoryEnabledBox.SetBounds(pad + optionW + 10, optionY, optionW, 34);
-            drawerOptimizeBox.SetBounds(pad, optionY + 44, optionW, 34);
+            int optionStep = compact ? 38 : 44;
+            drawerVoiceEnabledBox.SetBounds(pad, optionY, optionW, optionHeight);
+            drawerMemoryEnabledBox.SetBounds(pad + optionW + 10, optionY, optionW, optionHeight);
+            drawerOptimizeBox.SetBounds(pad, optionY + optionStep, optionW, optionHeight);
+            drawerRedeployVoiceButton.SetBounds(pad + optionW + 10, optionY + optionStep, optionW, optionHeight);
 
-            drawerMemoryButton.SetBounds(pad, optionY + 96, (width - 12) / 2, 38);
-            drawerAdvancedButton.SetBounds(pad + (width - 12) / 2 + 12, optionY + 96, (width - 12) / 2, 38);
-            settingsDrawerStatusLabel.SetBounds(pad, settingsDrawer.Height - 56, width, 34);
+            int secondaryY = compact ? 287 : optionY + 96;
+            int secondaryHeight = compact ? 34 : 38;
+            drawerMemoryButton.SetBounds(pad, secondaryY, (width - 12) / 2, secondaryHeight);
+            drawerAdvancedButton.SetBounds(pad + (width - 12) / 2 + 12, secondaryY, (width - 12) / 2, secondaryHeight);
+            settingsDrawerStatusLabel.SetBounds(pad, settingsDrawer.Height - (compact ? 44 : 56), width, 34);
         }
 
         private Label FindOrCreateDrawerLabel(string text, string name)
@@ -1578,9 +1728,16 @@ namespace IrohaAgentDesktop
             }
             if (serviceCardBodyLabel != null)
             {
+                string modelName = (settings.Model ?? "").IndexOf("pro", StringComparison.OrdinalIgnoreCase) >= 0
+                    ? "DeepSeek v4 pro"
+                    : "DeepSeek v4 flash";
                 serviceCardBodyLabel.Text =
-                    "DeepSeek v4 flash  在线\n" +
-                    "GPT-SoVITS  本地语音";
+                    modelName + "  在线\n" +
+                    "GPT-SoVITS  " + (settings.VoiceAutoMatched ? "已匹配" : "本地语音");
+            }
+            if (voiceEngineLabel != null)
+            {
+                voiceEngineLabel.Text = settings.VoiceAutoMatched ? "GPT-SoVITS · 已匹配" : "GPT-SoVITS · 本地";
             }
             if (serviceStatusControl != null)
             {
@@ -2073,6 +2230,23 @@ namespace IrohaAgentDesktop
             }
         }
 
+        private async void RedeployVoiceButton_Click(object sender, EventArgs e)
+        {
+            DialogResult answer = MessageBox.Show(
+                this,
+                "将重新检查并部署 GPT-SoVITS 与彩叶语音配置。\n\n应用只会清理自己托管的副本，不会删除桌面原始语音包或外部 GPT-SoVITS。",
+                "重新部署语音",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Information);
+            if (answer != DialogResult.OK) return;
+
+            settings.VoiceEnabled = true;
+            if (drawerVoiceEnabledBox != null) drawerVoiceEnabledBox.Checked = true;
+            SettingsStore.Save(settings);
+            if (settingsDrawerStatusLabel != null) settingsDrawerStatusLabel.Text = "正在重新部署语音…";
+            await RunVoiceSetupAsync(true);
+        }
+
         private void QuickSaveKeyButton_Click(object sender, EventArgs e)
         {
             SaveQuickApiKeyFromBox();
@@ -2241,18 +2415,7 @@ namespace IrohaAgentDesktop
             }
 
             SetStatus("正在准备语音", AvatarState.Thinking);
-            bool ready = false;
-            try
-            {
-                ready = await EnsureVoiceServiceReadyAsync();
-            }
-            catch (Exception ex)
-            {
-                AddFeedback("语音准备失败: " + ex.Message);
-            }
-            voiceServiceReady = ready;
-            RefreshInfoCards();
-            SetStatus(ready ? "语音已准备好" : "语音暂不可用", ready ? AvatarState.Happy : AvatarState.Error);
+            await RunVoiceSetupAsync(false);
         }
 
         private Task<bool> EnsureVoiceServiceReadyAsync()
@@ -2266,47 +2429,174 @@ namespace IrohaAgentDesktop
             {
                 if (voiceStartupTask == null || voiceStartupTask.IsCompleted)
                 {
-                    voiceStartupTask = EnsureVoiceServiceReadyCoreAsync();
+                    voiceStartupTask = EnsureVoiceServiceReadyCoreAsync(false, null);
                 }
                 return voiceStartupTask;
             }
         }
 
-        private async Task<bool> EnsureVoiceServiceReadyCoreAsync()
+        private async Task<bool> RunVoiceSetupAsync(bool forceRedeploy)
         {
-            if (await IsVoiceServiceReadyAsync())
+            if (isVoiceSetupRunning)
             {
+                Task<bool> active;
+                lock (voiceStartupLock) active = voiceStartupTask;
+                return active != null && await active;
+            }
+
+            isVoiceSetupRunning = true;
+            voiceSetupMessage = "";
+            bool showProgress = forceRedeploy || !IsVoiceSetupConfigurationUsable();
+            VoiceDeploymentForm progressForm = null;
+            if (showProgress)
+            {
+                progressForm = new VoiceDeploymentForm(forceRedeploy);
+                voiceDeploymentForm = progressForm;
+                progressForm.ShowFor(this);
+            }
+
+            if (testVoiceButton != null) testVoiceButton.Enabled = false;
+            if (drawerTestButton != null) drawerTestButton.Enabled = false;
+            if (drawerRedeployVoiceButton != null) drawerRedeployVoiceButton.Enabled = false;
+
+            Action<VoiceBootstrapProgress> report = delegate(VoiceBootstrapProgress value)
+            {
+                if (progressForm == null || progressForm.IsDisposed || IsDisposed) return;
+                try
+                {
+                    BeginInvoke((MethodInvoker)delegate
+                    {
+                        if (!progressForm.IsDisposed) progressForm.UpdateProgress(value);
+                    });
+                }
+                catch { }
+            };
+
+            bool ready = false;
+            try
+            {
+                Task<bool> task;
+                lock (voiceStartupLock)
+                {
+                    if (forceRedeploy || voiceStartupTask == null || voiceStartupTask.IsCompleted)
+                    {
+                        voiceStartupTask = EnsureVoiceServiceReadyCoreAsync(forceRedeploy, report);
+                    }
+                    task = voiceStartupTask;
+                }
+                ready = await task;
+            }
+            catch (Exception ex)
+            {
+                voiceSetupMessage = "语音准备失败: " + ex.Message;
+            }
+            finally
+            {
+                voiceServiceReady = ready;
+                RefreshInfoCards();
+                SetStatus(ready ? "语音已准备好" : "语音暂不可用", ready ? AvatarState.Happy : AvatarState.Error);
+                if (settingsDrawerStatusLabel != null)
+                {
+                    settingsDrawerStatusLabel.Text = ready ? "彩叶语音已匹配并连接。" : "语音暂不可用，可稍后重新部署。";
+                }
+                if (progressForm != null && !progressForm.IsDisposed)
+                {
+                    progressForm.Dismiss(ready, string.IsNullOrWhiteSpace(voiceSetupMessage)
+                        ? (ready ? "以后启动会自动连接" : "文字聊天仍可正常使用")
+                        : voiceSetupMessage);
+                }
+                voiceDeploymentForm = null;
+                isVoiceSetupRunning = false;
+                if (testVoiceButton != null) testVoiceButton.Enabled = true;
+                if (drawerTestButton != null) drawerTestButton.Enabled = true;
+                if (drawerRedeployVoiceButton != null) drawerRedeployVoiceButton.Enabled = true;
+            }
+            return ready;
+        }
+
+        private bool IsVoiceSetupConfigurationUsable()
+        {
+            return settings.VoiceAutoMatched &&
+                   settings.VoiceMatchVersion >= VoiceBootstrapper.CurrentMatchVersion &&
+                   VoiceBootstrapper.IsRuntimeUsable(settings.VoiceRuntimeRoot) &&
+                   File.Exists(VoiceBootstrapper.ResolveConfigPath(settings)) &&
+                   File.Exists(settings.VoiceRefAudioPath ?? "");
+        }
+
+        private async Task<bool> EnsureVoiceServiceReadyCoreAsync(
+            bool forceRedeploy,
+            Action<VoiceBootstrapProgress> progress)
+        {
+            if (!forceRedeploy && IsVoiceSetupConfigurationUsable() && await IsVoiceServiceReadyAsync())
+            {
+                voiceSetupMessage = "本地语音已连接";
+                return true;
+            }
+
+            if (forceRedeploy) StopOwnedVoiceService();
+            VoiceBootstrapResult result = await Task.Run(delegate
+            {
+                return VoiceBootstrapper.Prepare(settings, forceRedeploy, progress);
+            });
+            if (!result.Success)
+            {
+                voiceSetupMessage = result.Message;
+                return false;
+            }
+
+            settings.VoiceRuntimeRoot = result.RuntimeRoot;
+            settings.VoiceRuntimeConfigPath = result.ConfigPath;
+            settings.VoiceRefAudioPath = result.RefAudioPath;
+            settings.VoicePromptText = result.PromptText;
+            settings.VoicePromptLang = result.PromptLang;
+            settings.VoiceAutoMatched = true;
+            settings.VoiceMatchVersion = VoiceBootstrapper.CurrentMatchVersion;
+            SettingsStore.Save(settings);
+            voiceSetupMessage = result.Message;
+
+            if (!forceRedeploy && await IsVoiceServiceReadyAsync())
+            {
+                if (progress != null) progress(new VoiceBootstrapProgress(100, "彩叶的声音已经准备好了", "本地服务已连接", false));
                 return true;
             }
 
             if (!CanStartBundledVoiceService())
             {
-                AddFeedback("找不到本地语音运行环境");
+                voiceSetupMessage = "语音组件匹配完成，但启动文件不完整";
                 return false;
             }
 
             if (!StartBundledVoiceService())
             {
+                voiceSetupMessage = "GPT-SoVITS 服务未能启动";
                 return false;
             }
-            for (int i = 0; i < 150; i++)
+            for (int i = 0; i < 240; i++)
             {
                 await Task.Delay(1000);
                 if (await IsVoiceServiceReadyAsync())
                 {
+                    voiceSetupMessage = result.RuntimeDeployed ? "首次部署完成，以后启动会自动连接" : "彩叶语音已自动匹配";
+                    if (progress != null) progress(new VoiceBootstrapProgress(100, "彩叶的声音已经准备好了", voiceSetupMessage, false));
                     return true;
+                }
+                if (progress != null && i % 3 == 0)
+                {
+                    int percent = Math.Min(99, 88 + i / 20);
+                    progress(new VoiceBootstrapProgress(percent, "正在启动 GPT-SoVITS", "正在加载语音模型 · " + (i + 1) + " 秒", true));
                 }
             }
 
-            AddFeedback("语音服务启动超时");
+            voiceSetupMessage = "语音服务启动超时，可在设置中重新部署";
             return false;
         }
 
         private bool CanStartBundledVoiceService()
         {
-            string python = Path.Combine(AppSettings.VoiceRuntimeRoot, "runtime", "python.exe");
-            string api = Path.Combine(AppSettings.VoiceRuntimeRoot, "api_v2.py");
-            string config = Path.Combine(AppSettings.VoiceRuntimeRoot, AppSettings.VoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar));
+            string root = settings.VoiceRuntimeRoot ?? "";
+            string python = Path.Combine(root, "runtime", "python.exe");
+            string api = Path.Combine(root, "api_v2.py");
+            string config = VoiceBootstrapper.ResolveConfigPath(settings);
             return File.Exists(python) && File.Exists(api) && File.Exists(config);
         }
 
@@ -2314,28 +2604,47 @@ namespace IrohaAgentDesktop
         {
             try
             {
-                string python = Path.Combine(AppSettings.VoiceRuntimeRoot, "runtime", "python.exe");
+                StopOwnedVoiceService();
+                string root = settings.VoiceRuntimeRoot ?? "";
+                string python = Path.Combine(root, "runtime", "python.exe");
+                string config = VoiceBootstrapper.ResolveConfigPath(settings);
                 var startInfo = new ProcessStartInfo();
                 startInfo.FileName = python;
-                startInfo.Arguments = "api_v2.py -a 127.0.0.1 -p 9880 -c \"" + AppSettings.VoiceRuntimeConfig + "\"";
-                startInfo.WorkingDirectory = AppSettings.VoiceRuntimeRoot;
+                startInfo.Arguments = "\"api_v2.py\" -a 127.0.0.1 -p 9880 -c \"" + config + "\"";
+                startInfo.WorkingDirectory = root;
                 startInfo.UseShellExecute = false;
                 startInfo.CreateNoWindow = true;
                 startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                Process process = Process.Start(startInfo);
-                if (process == null)
+                startInfo.EnvironmentVariables["PYTHONUTF8"] = "1";
+                voiceServiceProcess = Process.Start(startInfo);
+                if (voiceServiceProcess == null)
                 {
-                    AddFeedback("语音服务进程未能创建");
                     return false;
                 }
-                AddFeedback("已在后台启动语音服务");
                 return true;
             }
             catch (Exception ex)
             {
-                AddFeedback("语音服务启动失败: " + ex.Message);
+                voiceSetupMessage = "语音服务启动失败: " + ex.Message;
                 return false;
             }
+        }
+
+        private void StopOwnedVoiceService()
+        {
+            Process process = voiceServiceProcess;
+            voiceServiceProcess = null;
+            if (process == null) return;
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                    process.WaitForExit(4000);
+                }
+            }
+            catch { }
+            finally { process.Dispose(); }
         }
 
         private async Task<bool> IsVoiceServiceReadyAsync()
@@ -2484,6 +2793,7 @@ namespace IrohaAgentDesktop
             if (drawerVoiceEnabledBox != null) drawerVoiceEnabledBox.Enabled = false;
             if (drawerMemoryEnabledBox != null) drawerMemoryEnabledBox.Enabled = false;
             if (drawerOptimizeBox != null) drawerOptimizeBox.Enabled = false;
+            if (drawerRedeployVoiceButton != null) drawerRedeployVoiceButton.Enabled = false;
             try
             {
                 await action();
@@ -2513,6 +2823,7 @@ namespace IrohaAgentDesktop
                 if (drawerVoiceEnabledBox != null) drawerVoiceEnabledBox.Enabled = true;
                 if (drawerMemoryEnabledBox != null) drawerMemoryEnabledBox.Enabled = true;
                 if (drawerOptimizeBox != null) drawerOptimizeBox.Enabled = true;
+                if (drawerRedeployVoiceButton != null) drawerRedeployVoiceButton.Enabled = true;
                 if (avatar.State == AvatarState.Error)
                 {
                     avatar.SetState(AvatarState.Idle);
@@ -3962,13 +4273,15 @@ namespace IrohaAgentDesktop
             }
 
             Color iconColor = enabled ? Color.FromArgb(54, 137, 181) : Color.FromArgb(126, 151, 164);
+            int iconAreaHeight = Math.Max(24, bounds.Height - 28);
             Rectangle iconBounds = new Rectangle(
                 bounds.X + (bounds.Width - 23) / 2,
-                bounds.Y + Math.Max(6, bounds.Height / 9),
+                bounds.Y + Math.Max(5, (iconAreaHeight - 23) / 2),
                 23,
                 23);
             if (index == 0) DrawBrainIcon(g, iconBounds, iconColor);
-            else DrawFluentIcon(g, iconBounds, index == 1 ? "\uE713" : "\uE790", iconColor);
+            else if (index == 1) DrawSettingsRailIcon(g, iconBounds, iconColor);
+            else DrawAppearanceRailIcon(g, iconBounds, iconColor);
 
             string label = actions[index] != null ? actions[index].Text : (index == 0 ? "记忆" : (index == 1 ? "设定" : "外观"));
             using (var labelFont = new Font("Microsoft YaHei UI", 8.2F, FontStyle.Bold))
@@ -3994,6 +4307,59 @@ namespace IrohaAgentDesktop
                     bounds,
                     color,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            }
+        }
+
+        private static void DrawSettingsRailIcon(Graphics g, Rectangle bounds, Color color)
+        {
+            float cx = bounds.X + bounds.Width / 2F;
+            float cy = bounds.Y + bounds.Height / 2F;
+            using (var pen = new Pen(color, 1.55F))
+            {
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+                for (int i = 0; i < 8; i++)
+                {
+                    double angle = i * Math.PI / 4.0;
+                    float x1 = cx + (float)Math.Cos(angle) * 7F;
+                    float y1 = cy + (float)Math.Sin(angle) * 7F;
+                    float x2 = cx + (float)Math.Cos(angle) * 10F;
+                    float y2 = cy + (float)Math.Sin(angle) * 10F;
+                    g.DrawLine(pen, x1, y1, x2, y2);
+                }
+                g.DrawEllipse(pen, cx - 7F, cy - 7F, 14F, 14F);
+                g.DrawEllipse(pen, cx - 2.6F, cy - 2.6F, 5.2F, 5.2F);
+            }
+        }
+
+        private static void DrawAppearanceRailIcon(Graphics g, Rectangle bounds, Color color)
+        {
+            RectangleF palette = new RectangleF(bounds.X + 1.5F, bounds.Y + 3F, bounds.Width - 3F, bounds.Height - 6F);
+            using (var pen = new Pen(color, 1.55F))
+            using (var softFill = new SolidBrush(Color.FromArgb(18, color)))
+            {
+                g.FillEllipse(softFill, palette);
+                g.DrawEllipse(pen, palette);
+                g.DrawEllipse(pen, bounds.X + 13.5F, bounds.Y + 11F, 4.5F, 4.5F);
+            }
+            Color[] swatches =
+            {
+                Color.FromArgb(76, 196, 211),
+                Color.FromArgb(111, 172, 218),
+                Color.FromArgb(232, 154, 184)
+            };
+            PointF[] centers =
+            {
+                new PointF(bounds.X + 7F, bounds.Y + 8F),
+                new PointF(bounds.X + 11F, bounds.Y + 6F),
+                new PointF(bounds.X + 15F, bounds.Y + 7.5F)
+            };
+            for (int i = 0; i < centers.Length; i++)
+            {
+                using (var dot = new SolidBrush(swatches[i]))
+                {
+                    g.FillEllipse(dot, centers[i].X - 1.6F, centers[i].Y - 1.6F, 3.2F, 3.2F);
+                }
             }
         }
 
@@ -4383,16 +4749,18 @@ namespace IrohaAgentDesktop
             }
             if (quickIcon.StartsWith("quick-", StringComparison.OrdinalIgnoreCase) && rect.Width >= 92)
             {
-                Rectangle iconRect = new Rectangle(rect.X + 12, rect.Y + Math.Max(4, (rect.Height - 20) / 2), 20, 20);
+                Rectangle iconRect = new Rectangle(rect.X + 11, rect.Y + Math.Max(4, (rect.Height - 20) / 2), 20, 20);
                 DrawFunctionalIcon(g, iconRect, quickIcon.Substring(6));
-                Rectangle textRect = new Rectangle(rect.X + 38, rect.Y, Math.Max(20, rect.Width - 43), rect.Height);
-                if (!string.IsNullOrWhiteSpace(SecondaryText) && rect.Height >= 28)
+                Rectangle textRect = new Rectangle(rect.X + 38, rect.Y, Math.Max(20, rect.Width - 45), rect.Height);
+                if (!string.IsNullOrWhiteSpace(SecondaryText) && rect.Height >= 38)
                 {
+                    int contentHeight = 34;
+                    int contentTop = rect.Y + Math.Max(1, (rect.Height - contentHeight) / 2);
                     TextRenderer.DrawText(
                         g,
                         Text,
                         Font,
-                        new Rectangle(textRect.X, rect.Y + 1, textRect.Width, 17),
+                        new Rectangle(textRect.X, contentTop, textRect.Width, 17),
                         text,
                         TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
                     using (var secondaryFont = new Font("Microsoft YaHei UI", 6.7F, FontStyle.Regular))
@@ -4401,7 +4769,7 @@ namespace IrohaAgentDesktop
                             g,
                             SecondaryText,
                             secondaryFont,
-                            new Rectangle(textRect.X, rect.Y + 16, textRect.Width, Math.Max(12, rect.Height - 17)),
+                            new Rectangle(textRect.X, contentTop + 17, textRect.Width, 17),
                             Color.FromArgb(96, 132, 153),
                             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
                     }
@@ -4970,6 +5338,8 @@ namespace IrohaAgentDesktop
         private string pressedWindowButton = "";
         private string modelName = "deepseek-v4-flash";
         public bool PaintBarChrome { get; set; }
+        internal Rectangle LastTitleBounds { get; private set; }
+        internal Rectangle LastModelBadgeBounds { get; private set; }
 
         public string ModelName
         {
@@ -5010,19 +5380,37 @@ namespace IrohaAgentDesktop
                 }
             }
             DrawLeafLogo(g, 36, rect.Height / 2 + 1);
+            const string title = "彩叶 Iroha Agent";
+            int titleX = 67;
             using (var titleFont = new Font("Microsoft YaHei UI", 13.5F, FontStyle.Bold))
             {
+                Size measuredTitle = TextRenderer.MeasureText(
+                    g,
+                    title,
+                    titleFont,
+                    new Size(420, Math.Max(1, rect.Height)),
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+                int titleWidth = Math.Max(156, measuredTitle.Width + 2);
+                LastTitleBounds = new Rectangle(titleX, 0, titleWidth, rect.Height);
                 TextRenderer.DrawText(
                     g,
-                    "彩叶 Iroha Agent",
+                    title,
                     titleFont,
-                    new Rectangle(67, 0, 156, rect.Height),
+                    LastTitleBounds,
                     Theme.TextMain,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
             }
             string modelBadge = GetModelBadgeText();
-            DrawChip(g, 228, 15, string.Equals(modelBadge, "Flash", StringComparison.Ordinal) ? 50 : 38, modelBadge, Theme.Primary);
-            DrawOnlineChip(g, 314, 13, 80);
+            int measuredBadgeWidth = TextRenderer.MeasureText(
+                g,
+                modelBadge,
+                Font,
+                new Size(100, 26),
+                TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+            int badgeWidth = Math.Max(38, Math.Min(58, measuredBadgeWidth + 20));
+            LastModelBadgeBounds = new Rectangle(LastTitleBounds.Right + 12, 15, badgeWidth, 26);
+            DrawChip(g, LastModelBadgeBounds.X, LastModelBadgeBounds.Y, LastModelBadgeBounds.Width, modelBadge, Theme.Primary);
+            DrawOnlineChip(g, LastModelBadgeBounds.Right + 18, 13, 80);
             DrawWindowButtons(g, rect);
         }
 
@@ -6397,9 +6785,13 @@ namespace IrohaAgentDesktop
                 BaseUrl = current.BaseUrl,
                 Model = current.Model,
                 VoiceServerUrl = current.VoiceServerUrl,
+                VoiceRuntimeRoot = current.VoiceRuntimeRoot,
+                VoiceRuntimeConfigPath = current.VoiceRuntimeConfigPath,
                 VoiceRefAudioPath = DefaultIfBlank(current.VoiceRefAudioPath, AppSettings.DefaultVoiceRefAudioPath),
                 VoicePromptText = DefaultIfBlank(current.VoicePromptText, AppSettings.DefaultVoicePromptText),
                 VoicePromptLang = DefaultIfBlank(current.VoicePromptLang, AppSettings.DefaultVoicePromptLang),
+                VoiceAutoMatched = current.VoiceAutoMatched,
+                VoiceMatchVersion = current.VoiceMatchVersion,
                 VoiceEnabled = current.VoiceEnabled,
                 MemoryEnabled = current.MemoryEnabled,
                 AutoOptimizePrompt = current.AutoOptimizePrompt
@@ -6557,9 +6949,13 @@ namespace IrohaAgentDesktop
             Settings.Model = Convert.ToString(modelBox.SelectedItem, CultureInfo.InvariantCulture);
             if (string.IsNullOrWhiteSpace(Settings.Model)) Settings.Model = "deepseek-v4-flash";
             Settings.VoiceServerUrl = "http://127.0.0.1:9880";
-            Settings.VoiceRefAudioPath = AppSettings.DefaultVoiceRefAudioPath;
-            Settings.VoicePromptText = AppSettings.DefaultVoicePromptText;
-            Settings.VoicePromptLang = AppSettings.DefaultVoicePromptLang;
+            Settings.VoiceRuntimeRoot = DefaultIfBlank(Settings.VoiceRuntimeRoot, AppSettings.DefaultVoiceRuntimeRoot);
+            Settings.VoiceRuntimeConfigPath = DefaultIfBlank(
+                Settings.VoiceRuntimeConfigPath,
+                Path.Combine(Settings.VoiceRuntimeRoot, AppSettings.DefaultVoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar)));
+            Settings.VoiceRefAudioPath = DefaultIfBlank(Settings.VoiceRefAudioPath, AppSettings.DefaultVoiceRefAudioPath);
+            Settings.VoicePromptText = DefaultIfBlank(Settings.VoicePromptText, AppSettings.DefaultVoicePromptText);
+            Settings.VoicePromptLang = DefaultIfBlank(Settings.VoicePromptLang, AppSettings.DefaultVoicePromptLang);
             Settings.VoiceEnabled = voiceEnabledBox.Checked;
             Settings.MemoryEnabled = memoryEnabledBox.Checked;
             Settings.AutoOptimizePrompt = autoOptimizePromptBox.Checked;
@@ -6925,14 +7321,7 @@ namespace IrohaAgentDesktop
                 {
                     return;
                 }
-                float cxStage = stageRect.X + stageRect.Width / 2f;
-                float bobStage = (float)Math.Sin(frame / 4.0) * 3f;
-                float topStage = stageRect.Y + 46 + bobStage;
-                DrawHalo(g, cxStage, topStage);
-                DrawBody(g, cxStage, topStage);
-                DrawHead(g, cxStage, topStage);
-                DrawHair(g, cxStage, topStage);
-                DrawFace(g, cxStage, topStage);
+                DrawMissingStageAsset(g, stageRect);
                 return;
             }
             g.Clear(Color.White);
@@ -6960,6 +7349,20 @@ namespace IrohaAgentDesktop
             DrawHair(g, cx, top);
             DrawFace(g, cx, top);
             DrawStatusBadge(g, rect);
+        }
+
+        private void DrawMissingStageAsset(Graphics g, Rectangle rect)
+        {
+            using (var veil = new SolidBrush(Color.FromArgb(226, 247, 252, 255)))
+            {
+                g.FillRectangle(veil, rect);
+            }
+            using (var font = new Font("Microsoft YaHei UI", 12F, FontStyle.Regular))
+            using (var brush = new SolidBrush(Color.FromArgb(70, 111, 139)))
+            using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            {
+                g.DrawString("界面资源需要恢复，请重新解压完整安装包。", font, brush, rect, format);
+            }
         }
 
         private Dictionary<AvatarState, string[]> LoadPortraitFramePaths()

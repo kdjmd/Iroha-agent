@@ -98,6 +98,14 @@ namespace IrohaAgentDesktop
                 InvokeControlMouse(toolRail, "OnMouseUp", toolBounds[1]);
                 Application.DoEvents();
                 Assert(settingsDrawer.Visible && toolRail.SelectedIndex == 1, "settings tool opens and selects the drawer", results);
+                Button redeployVoice = GetPrivateField<Button>(form, "drawerRedeployVoiceButton");
+                CheckBox optimizePrompt = GetPrivateField<CheckBox>(form, "drawerOptimizeBox");
+                Assert(redeployVoice.Visible && redeployVoice.Text == "重新部署语音", "settings exposes voice redeploy", results);
+                Assert(settingsDrawer.ClientRectangle.Contains(redeployVoice.Bounds), "voice redeploy stays inside settings drawer", results);
+                Assert(!redeployVoice.Bounds.IntersectsWith(optimizePrompt.Bounds), "voice redeploy does not overlap prompt optimization", results);
+                Assert(!settingsDrawer.Bounds.IntersectsWith(toolRail.Bounds), "settings drawer clears the right tool rail", results);
+                GlassPanel voiceDock = GetPrivateField<GlassPanel>(form, "voiceDock");
+                Assert(!settingsDrawer.Bounds.IntersectsWith(voiceDock.Bounds), "settings drawer clears the voice dock", results);
                 InvokeControlMouse(toolRail, "OnMouseDown", toolBounds[1]);
                 InvokeControlMouse(toolRail, "OnMouseUp", toolBounds[1]);
                 Assert(!settingsDrawer.Visible, "settings drawer closes", results);
@@ -107,6 +115,9 @@ namespace IrohaAgentDesktop
                 InvokePrivateMethod(form, "SetToolRailSelection", GetPrivateField<Button>(form, "memoryButton"));
 
                 TopBarControl topBar = GetPrivateField<TopBarControl>(form, "topBarControl");
+                topBar.Refresh();
+                Assert(!topBar.LastTitleBounds.IntersectsWith(topBar.LastModelBadgeBounds), "model badge clears the product title", results);
+                Assert(topBar.LastModelBadgeBounds.Left - topBar.LastTitleBounds.Right >= 8, "model badge keeps title spacing", results);
                 string originalModel = topBar.ModelName;
                 topBar.ModelName = "deepseek-v4-pro";
                 Assert(string.Equals(topBar.ModelName, "deepseek-v4-pro", StringComparison.OrdinalIgnoreCase), "model badge state accepts Pro", results);

@@ -1,0 +1,15 @@
+PASS  FullVoice release includes the complete GPT-SoVITS archive
+PASS  FullVoice release includes iroha-model.zip and bundled 7-Zip
+PASS  release packaging produced five volumes no larger than 1,992,294,400 bytes
+PASS  first launch extracted the runtime into a new isolated managed directory
+PASS  first launch imported GPT and SoVITS weights plus reference audio
+PASS  first launch persisted VoiceAutoMatched=true
+PASS  first launch persisted VoiceMatchVersion=2
+PASS  deployed service reached HTTP 200 at /docs
+PASS  external GPT-SoVITS runtime was restored after isolated QA
+INFO  managed_files=55202
+INFO  managed_bytes=14521282009
+INFO  managed_gib=13.524
+INFO  final_default_device=cpu
+INFO  final_default_is_half=false
+INFO  real synthesis and playback results are in round-2026-07-16-v21-full-voice-qa.txt

@@ -1,8 +1,5 @@
 # Local toolchains and caches
 .toolchain/
-.gradle-user/
-.gradle/
-**/.gradle/
 .idea/
 .vs/
 
@@ -12,16 +9,12 @@ tmp/
 outputs/
 desktop/dist/
 desktop/dist-*/
-android/build/
-android/app/build/
 **/build/
 **/bin/
 **/obj/
 
 # Runtime and release artifacts
 *.exe
-*.apk
-*.aab
 *.zip
 *.7z
 *.rar

@@ -1,15 +1,20 @@
 {
-  "sourceZip": "external/not-distributed",
+  "schemaVersion": 2,
+  "platform": "windows",
   "detectedType": "GPT-SoVITS/GSV",
-  "modelFiles": [
-    "酒寄彩叶gsv模型/酒寄彩叶_v2pp-e15.ckpt",
-    "酒寄彩叶gsv模型/酒寄彩叶_v2pp_e8_s128.pth"
+  "modelFamily": "v2ProPlus",
+  "requiredFiles": [
+    "*.ckpt",
+    "*.pth",
+    "*.wav",
+    "*.list"
   ],
-  "trainingList": "酒寄彩叶gsv模型/训练集/训练集.list",
-  "clientIntegration": "HTTP voice server bridge",
   "defaultVoiceServerUrl": "http://127.0.0.1:9880",
-  "notes": [
-    "Windows and Android clients call a GPT-SoVITS compatible /tts endpoint.",
-    "The original zip is not modified or bundled into the APK."
-  ]
+  "deployment": {
+    "managedRuntime": "%LOCALAPPDATA%/IrohaLocalAgent/VoiceRuntime",
+    "managedVoice": "%LOCALAPPDATA%/IrohaLocalAgent/Voice/iroha",
+    "sourcePackageIsReadOnly": true,
+    "redeployPreservesExternalRuntime": true
+  },
+  "distribution": "Model weights and audio are excluded from Git and may only be attached to a private Release when redistribution rights are confirmed."
 }

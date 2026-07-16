@@ -11,11 +11,14 @@
 
 GPT-SoVITS 默认只监听 `127.0.0.1:9880`。不要在没有访问控制的情况下把端口暴露到公网。
 
+“重新部署语音”只允许清理 `%LOCALAPPDATA%\IrohaLocalAgent` 下的应用托管副本。任何修改路径边界、进程筛选或递归删除逻辑的变更都必须重新执行 Bootstrap QA。
+
 ## 发布前检查
 
 ```powershell
 git status --short
 git ls-files | Select-String -Pattern 'settings.json|memory.json|crash.log|\.env'
+git ls-files | Select-String -Pattern '\.(ckpt|pth|wav|exe|zip|7z)$'
 ```
 
-发布包应在源码目录之外解压并启动验证。
+发布包应在源码目录之外解压并启动验证。FullVoice 含大型第三方运行时和角色语音资源，公开上传前必须单独完成来源、许可和再分发授权核查。

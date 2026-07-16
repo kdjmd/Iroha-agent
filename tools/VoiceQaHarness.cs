@@ -11,6 +11,9 @@ namespace IrohaAgentDesktop
 {
     internal static class VoiceQaProgram
     {
+        private static string reportPath = "";
+        private static readonly List<string> liveResults = new List<string>();
+
         [STAThread]
         private static void Main(string[] args)
         {
@@ -19,8 +22,9 @@ namespace IrohaAgentDesktop
             {
                 throw new ArgumentException("--output is required");
             }
+            reportPath = Path.GetFullPath(output);
 
-            var results = new List<string>();
+            var results = liveResults;
             WindowsFormsSynchronizationContext.AutoInstall = false;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -43,6 +47,12 @@ namespace IrohaAgentDesktop
                     "こんにちは。彩葉です。今日は一緒に、ゆっくりお話ししましょう。");
                 string wavPath = prepareTask.GetAwaiter().GetResult();
                 timer.Stop();
+                if (string.IsNullOrWhiteSpace(wavPath) || !File.Exists(wavPath))
+                {
+                    RichTextBox feedback = GetPrivateField<RichTextBox>(form, "chatLog");
+                    results.Add("INFO  voice_feedback=" + (feedback.Text ?? "").Replace("\r", " ").Replace("\n", " | "));
+                    FlushResults();
+                }
                 Assert(!string.IsNullOrWhiteSpace(wavPath) && File.Exists(wavPath), "voice WAV generated", results);
                 Assert(timer.Elapsed < TimeSpan.FromSeconds(90), "voice generation completes within timeout", results);
                 results.Add("INFO  generation_seconds=" + timer.Elapsed.TotalSeconds.ToString("0.00"));
@@ -149,7 +159,16 @@ namespace IrohaAgentDesktop
         {
             string line = (condition ? "PASS  " : "FAIL  ") + description;
             results.Add(line);
+            FlushResults();
             if (!condition) throw new InvalidOperationException(line);
+        }
+
+        private static void FlushResults()
+        {
+            if (string.IsNullOrWhiteSpace(reportPath)) return;
+            string directory = Path.GetDirectoryName(reportPath);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+            File.WriteAllLines(reportPath, liveResults.ToArray(), new UTF8Encoding(false));
         }
 
         private static string GetArgument(string[] args, string name)

@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $dist = Join-Path $root "dist"
 $source = Join-Path $root "AgentDesktop.cs"
+$voiceBootstrapSource = Join-Path $root "VoiceBootstrap.cs"
 $exe = Join-Path $dist "IrohaAgent.exe"
 $projectRoot = Split-Path -Parent $root
 $icon = Join-Path $projectRoot "assets\icons\caiye-chibi.ico"
@@ -30,6 +31,8 @@ $cscArgs = @(
   "/r:System.Drawing.dll",
   "/r:System.Windows.Forms.dll",
   "/r:System.Net.Http.dll",
+  "/r:System.IO.Compression.dll",
+  "/r:System.IO.Compression.FileSystem.dll",
   "/r:System.Web.Extensions.dll"
 )
 
@@ -38,6 +41,7 @@ if (Test-Path -LiteralPath $icon) {
 }
 
 $cscArgs += $source
+$cscArgs += $voiceBootstrapSource
 & $csc @cscArgs
 if ($LASTEXITCODE -ne 0) {
   throw "C# compiler failed with exit code $LASTEXITCODE"
