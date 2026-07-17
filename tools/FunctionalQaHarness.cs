@@ -11,8 +11,27 @@ namespace IrohaAgentDesktop
 {
     internal static class FunctionalQaProgram
     {
+        private static readonly List<string> Results = new List<string>();
+        private static string ReportPath = "";
+
         [STAThread]
         private static void Main(string[] args)
+        {
+            string output = GetArgument(args, "--output");
+            if (!string.IsNullOrWhiteSpace(output)) ReportPath = Path.GetFullPath(output);
+            try
+            {
+                Run(args);
+            }
+            catch (Exception ex)
+            {
+                Results.Add("ERROR: " + (ex.Message ?? "Functional QA failed"));
+                FlushResults();
+                Environment.ExitCode = 1;
+            }
+        }
+
+        private static void Run(string[] args)
         {
             string output = GetArgument(args, "--output");
             if (string.IsNullOrWhiteSpace(output))
@@ -20,7 +39,8 @@ namespace IrohaAgentDesktop
                 throw new ArgumentException("--output is required");
             }
 
-            var results = new List<string>();
+            ReportPath = Path.GetFullPath(output);
+            var results = Results;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             using (var form = new MainForm())
@@ -38,6 +58,17 @@ namespace IrohaAgentDesktop
                 form.Size = new Size(1280, 720);
                 form.Show();
                 Application.DoEvents();
+
+                string originalVoiceUrl = settings.VoiceServerUrl;
+                var occupiedPort = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+                occupiedPort.Start();
+                int occupiedPortNumber = ((System.Net.IPEndPoint)occupiedPort.LocalEndpoint).Port;
+                Assert(!(bool)InvokePrivateMethod(form, "IsTcpPortAvailable", occupiedPortNumber), "occupied voice port is detected", results);
+                occupiedPort.Stop();
+                Assert((bool)InvokePrivateMethod(form, "IsTcpPortAvailable", occupiedPortNumber), "released voice port becomes available", results);
+                settings.VoiceServerUrl = "http://127.0.0.1:" + occupiedPortNumber;
+                Assert((int)InvokePrivateMethod(form, "GetConfiguredVoicePort") == occupiedPortNumber, "configured local voice port is preserved", results);
+                settings.VoiceServerUrl = originalVoiceUrl;
 
                 AvatarControl avatar = GetPrivateField<AvatarControl>(form, "avatar");
                 Timer timer = GetPrivateField<Timer>(avatar, "timer");
@@ -84,8 +115,14 @@ namespace IrohaAgentDesktop
                 conversationMenu.Items[1].PerformClick();
                 conversationMenu.Close();
                 Application.DoEvents();
-                Application.DoEvents();
-                Assert(conversationMenu.IsDisposed, "conversation menu disposes after close", results);
+                Assert(!conversationMenu.IsDisposed, "conversation menu survives the closing input message", results);
+                DateTime menuCleanupDeadline = DateTime.UtcNow.AddMilliseconds(900);
+                while (!conversationMenu.IsDisposed && DateTime.UtcNow < menuCleanupDeadline)
+                {
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(20);
+                }
+                Assert(conversationMenu.IsDisposed, "conversation menu disposes after deferred cleanup", results);
                 if (menuTarget.Pinned != menuTargetPinned)
                 {
                     InvokePrivateMethod(form, "ToggleConversationPin", menuTarget);
@@ -140,9 +177,7 @@ namespace IrohaAgentDesktop
                 form.Close();
             }
 
-            string directory = Path.GetDirectoryName(output);
-            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-            File.WriteAllLines(output, results.ToArray(), new UTF8Encoding(false));
+            FlushResults();
         }
 
         private static bool IsInside(Rectangle viewport, Control control)
@@ -154,8 +189,17 @@ namespace IrohaAgentDesktop
 
         private static void Assert(bool condition, string label, List<string> results)
         {
+            results.Add((condition ? "PASS: " : "FAIL: ") + label);
+            FlushResults();
             if (!condition) throw new InvalidOperationException("FAIL: " + label);
-            results.Add("PASS: " + label);
+        }
+
+        private static void FlushResults()
+        {
+            if (string.IsNullOrWhiteSpace(ReportPath)) return;
+            string directory = Path.GetDirectoryName(ReportPath);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+            File.WriteAllLines(ReportPath, Results.ToArray(), new UTF8Encoding(false));
         }
 
         private static T GetPrivateField<T>(object owner, string name)

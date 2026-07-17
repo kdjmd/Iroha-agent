@@ -5,9 +5,9 @@
 | 项目 | 内容 |
 |---|---|
 | 产品 | 彩叶 Iroha Agent |
-| 基线版本 | 2.1.0 |
+| 基线版本 | 2.1.1 |
 | 平台 | Windows 10/11 x64 |
-| 文档日期 | 2026-07-16 |
+| 文档日期 | 2026-07-17 |
 | 主程序 | .NET Framework WinForms |
 | 模型服务 | DeepSeek HTTP API |
 | 本地语音 | GPT-SoVITS HTTP API |
@@ -75,15 +75,17 @@ flowchart LR
 ### 5.1 状态流程
 
 1. 检查 `settings.json` 中已匹配的运行时、配置和参考音频。
-2. 检查本机 `127.0.0.1:9880/docs` 是否健康。
+2. 检查本机配置端口的 `/openapi.json` 是否包含真实 `/tts` 接口。
 3. 查找用户指定、应用目录、托管目录和常见位置中的 GPT-SoVITS。
-4. 未找到运行时且 FullVoice 存在时，调用随包 7-Zip 解压到托管目录。
+4. 校验 FullVoice 分卷连续性、归档可读性和磁盘空间；解压到独立临时目录。
 5. 查找或导入 `.ckpt`、`.pth`、`.wav` 和 `.list`。
 6. 从训练列表读取参考音频文件名、日语提示文本和语言。
-7. 生成 `tts_infer_iroha.yaml`。
-8. 启动 `api_v2.py`，轮询健康状态。
-9. 保存运行时、配置、参考音频与匹配版本。
-10. 进度窗显示完成；以后启动直接连接。
+7. 将有效 `tts_infer_iroha.yaml` 复制或生成到应用可写托管目录，原始运行时保持不变。
+8. 新运行时完整校验后原子切换，写入 `.deployment-ready`；失败自动恢复旧运行时。
+9. 通过 Python 引导脚本设置独立 Numba 缓存，启动 `api_v2.py` 并按墙钟时间轮询健康状态。
+10. 自动处理 `9880-9899` 端口占用并保存实际端口。
+11. 保存运行时、配置、参考音频与匹配版本。
+12. 进度窗显示完成；以后启动直接连接。
 
 ### 5.2 进度区间
 
@@ -108,6 +110,8 @@ is_half: false
 
 原因：CPU 全精度不依赖 NVIDIA 驱动、CUDA 版本或可用显存，是跨电脑首次启动最稳定的默认值。未来增加 GPU 模式时，应在设置中显式选择并执行独立能力探测，不能把 GPU 作为无条件默认。
 
+Python 子进程不得通过旧版 `.NET ProcessStartInfo.EnvironmentVariables` 注入变量；部分 Windows 同时存在 `Path` / `PATH` 时会触发大小写冲突。当前使用 `-X utf8 -u` 和托管 `start_voice.py` 设置 `NUMBA_CACHE_DIR`，兼顾实时诊断与跨电脑兼容。
+
 ## 6. 重新部署安全约束
 
 “重新部署语音”必须遵守以下不变量：
@@ -117,6 +121,8 @@ is_half: false
 - 不删除桌面原始语音 ZIP。
 - 不删除用户自行安装的外部 GPT-SoVITS。
 - 没有可恢复的随包运行时归档时，不删除唯一的托管运行时，仅重建语音配置。
+- 新部署只在临时目录完成，验证前保留旧运行时；缺失分卷或中断后恢复最后可用版本。
+- GPT-SoVITS 使用托管 YAML 副本和缓存目录，不要求外部运行时可写。
 - 只停止可执行文件路径位于目标运行时中的 `python/pythonw` 进程。
 - 重新部署失败时文字聊天继续可用。
 
@@ -131,12 +137,13 @@ is_half: false
 
 | 数据 | 默认位置 | 内容 |
 |---|---|---|
-| 应用设置 | `%APPDATA%\IrohaLocalAgent\settings.json` | API、模型、语音路径与开关 |
-| 长期记忆 | `%APPDATA%\IrohaLocalAgent\memory.json` | 用户偏好和本地记忆 |
+| 应用设置 | 新安装 `%LOCALAPPDATA%\IrohaLocalAgent\settings.json`；旧安装沿用 `%APPDATA%` | API、模型、语音路径与开关 |
+| 长期记忆 | 与设置同目录的 `memory.json` | 用户偏好和本地记忆；原子保存、备份恢复 |
 | 托管运行时 | `%LOCALAPPDATA%\IrohaLocalAgent\VoiceRuntime` | 解压后的 GPT-SoVITS |
 | 托管模型 | `%LOCALAPPDATA%\IrohaLocalAgent\Voice\iroha` | 权重、参考音频和 YAML |
+| 语音缓存 | `%LOCALAPPDATA%\IrohaLocalAgent\VoiceCache` | Python 引导脚本与 Numba 缓存 |
 | 临时语音 | `%TEMP%\iroha-agent-voice-*.wav` | 播放后删除 |
-| 崩溃日志 | `%APPDATA%\IrohaLocalAgent\crash.log` | 仅在未处理异常时写入，不在主界面展示 |
+| 崩溃日志 | `%LOCALAPPDATA%\IrohaLocalAgent\crash.log` | 仅在首个未处理异常时写入，不在主界面展示或上传 |
 
 关键设置字段：
 
@@ -149,7 +156,7 @@ is_half: false
 | `VoicePromptText` | 参考音频对应的日语文本 |
 | `VoicePromptLang` | 默认 `ja` |
 | `VoiceAutoMatched` | 是否已完成自动匹配 |
-| `VoiceMatchVersion` | 匹配规则版本，当前为 2 |
+| `VoiceMatchVersion` | 匹配规则版本，当前为 3 |
 
 ## 8. 构建
 
@@ -170,20 +177,20 @@ cd desktop
 ### 8.2 Release
 
 ```powershell
-.\tools\build-windows-release.ps1 -Version 2.1.0
+.\tools\build-windows-release.ps1 -Version 2.1.1
 ```
 
 完整语音版：
 
 ```powershell
 .\tools\build-windows-release.ps1 `
-  -Version 2.1.0 `
+  -Version 2.1.1 `
   -FullVoice `
   -RuntimeArchive "C:\path\GPT-SoVITS-runtime.7z" `
   -VoicePackage "C:\path\iroha-model.zip"
 ```
 
-发布脚本执行：构建、复制、敏感文件检查、Portable ZIP、FullVoice 1.9 GB 分卷、Release 说明和 SHA-256 清单。
+发布脚本默认先执行统一回归，再完成构建、复制、敏感文件检查、Portable ZIP、FullVoice 1.9 GB 分卷、Release 说明和 SHA-256 清单。仅诊断时才允许显式使用 `-SkipQa`。
 
 ## 9. 验收矩阵
 
@@ -196,6 +203,7 @@ cd desktop
 | W-05 | 设置浮窗和重新部署入口无重叠 | 通过 | v2.1 功能 QA |
 | W-06 | Flash / Pro 徽标状态 | 通过 | v2.1 功能 QA |
 | W-07 | 高清背景或立绘缺失、损坏时阻止占位 UI | 通过 | v2.1 视觉资源保护 QA |
+| W-08 | 会话菜单关闭期间保持存活并在消息处理后释放 | 通过 | v2.1.1 功能 QA |
 | V-01 | 真实服务健康检查 | 通过 | v2.1 完整语音 QA |
 | V-02 | 日语 WAV 生成 | 通过 | 4.74 秒音频 |
 | V-03 | 音频非静音与自动峰值处理 | 通过 | 峰值约 -1.1 dBFS |
@@ -206,6 +214,11 @@ cd desktop
 | B-04 | 重新部署替换托管旧文件 | 通过 | v2.1 Bootstrap QA |
 | B-05 | 源语音包哈希不变 | 通过 | v2.1 Bootstrap QA |
 | B-06 | 外部运行时哨兵文件不变 | 通过 | v2.1 Bootstrap QA |
+| B-07 | 分卷缺失时保留最后可用运行时并指出具体分卷 | 通过 | v2.1.1 Bootstrap QA |
+| B-08 | 只读运行时 YAML 复制到托管目录且源哈希不变 | 通过 | v2.1.1 Bootstrap QA |
+| B-09 | 跨 Windows 用户路径自动重新匹配 | 通过 | v2.1.1 Bootstrap QA |
+| M-01 | 记忆原子保存、并发写入与损坏恢复 | 通过 | v2.1.1 Memory QA |
+| M-02 | 一次性任务和 API 密钥不进入长期记忆 | 通过 | v2.1.1 Memory QA |
 | P-01 | Portable ZIP 与哈希 | 通过 | 发布脚本 QA |
 | P-02 | FullVoice 五分卷与哈希 | 通过 | 发布脚本 QA |
 
@@ -219,6 +232,10 @@ docs/evidence/round-2026-07-16-v21-visual-asset-guard-qa.txt
 docs/evidence/round-2026-07-16-v21-deployment-progress.png
 docs/evidence/round-2026-07-16-v21-settings.png
 docs/evidence/round-2026-07-16-v21-standard.png
+docs/evidence/round-2026-07-17-v211-functional-qa.txt
+docs/evidence/round-2026-07-17-v211-bootstrap-qa.txt
+docs/evidence/round-2026-07-17-v211-memory-qa.txt
+docs/evidence/round-2026-07-17-v211-full-voice-qa.txt
 ```
 
 ## 11. 故障排查
@@ -228,17 +245,21 @@ docs/evidence/round-2026-07-16-v21-standard.png
 | 首次部署找不到运行时 | FullVoice 的 `voice-runtime` 和全部分卷是否完整 | 重新完整解压发布包 |
 | 提示缺少 7-Zip | `voice-runtime/tools/7z.exe` 与 `7z.dll` | 重新下载 FullVoice |
 | 部署磁盘不足 | `%LOCALAPPDATA%` 所在磁盘剩余空间 | 至少释放 20 GB |
-| 服务启动超时 | 9880 端口、CPU 占用、杀毒软件 | 等待模型加载；关闭占用端口的进程后重新部署 |
-| `/docs` 可访问但无音频 | YAML 权重路径、参考音频、服务错误输出 | 点击重新部署；必要时检查手动服务日志 |
+| 服务启动超时 | CPU 占用、杀毒软件、Numba 缓存 | 等待进度；应用最长 10 分钟后清理本次进程，可重新部署 |
+| 端口被占用 | `9880-9899` 是否有其他服务 | 应用自动选择可用端口并保存，不需要手工改端口 |
+| OpenAPI 可访问但无音频 | 是否存在真实 `/tts`、YAML 权重路径和参考音频 | 点击重新部署；应用不会把无关本地服务误判为 GPT-SoVITS |
+| 记忆突然为空 | `memory.json.bak` 与 `.corrupt` | 应用会自动从备份恢复；保留损坏副本供人工核查 |
 | 语音很小或静音 | WAV 长度、峰值和 RMS | 应用会拒绝无效/近静音响应并显示不可用 |
 | 只有文字没有声音 | 语音开关、服务状态、系统输出设备 | 开启日语语音并试听 |
 | DeepSeek 无回复 | API Key、模型名、网络和账户余额 | 在设置中保存并重新测试 |
+| 点击会话菜单后反复弹错 | 旧版 `crash.log` 是否包含 `ContextMenuStrip` / `ObjectDisposedException` | 升级至 v2.1.1；菜单改为延迟释放，同一次运行不会重复弹全局错误 |
 
 ## 12. 安全与隐私
 
 - API Key 不写入源码、Release、截图或 QA 报告。
 - 本地 HTTP 语音服务只绑定 `127.0.0.1`。
 - Release 构建检查 `settings.json`、`memory.json`、`.env` 和日志。
+- 设置与记忆使用原子替换和最后有效备份；长期记忆拒绝 API Key、密码和 token。
 - 语音 ZIP 作为只读源使用，导入写入应用托管目录。
 - Git 忽略权重、音频、运行时、EXE 和发布归档。
 - 公开发布前必须完成第三方素材授权核查。
@@ -274,7 +295,7 @@ docs/evidence/round-2026-07-16-v21-standard.png
 |---|---|---|
 | P1 | API Key 明文存储 | DPAPI / Credential Manager |
 | P1 | `AgentDesktop.cs` 体积过大 | 按 UI、DeepSeek、Memory、Voice、Conversation 拆分 |
-| P1 | GPT-SoVITS 进程日志未结构化采集 | 仅在诊断模式写受限本地日志 |
+| P2 | GPT-SoVITS 诊断仅保存在内存 | 可选诊断模式写入大小受限、自动轮换且不含聊天内容的日志 |
 | P2 | CPU 默认启动较慢 | 增加经过探测的 GPU 可选模式 |
 | P2 | 首次部署不可暂停/取消 | 增加可恢复解压和取消令牌 |
 | P2 | 缺少代码签名 | 发布前接入签名证书和 SmartScreen 流程 |
@@ -304,4 +325,4 @@ docs/evidence/round-2026-07-16-v21-standard.png
 
 建议签署文本：
 
-> Iroha Agent v2.1.0 Windows 基线在构建、主要功能、视觉小说界面、首次语音部署、安全重新部署、真实语音生成和发布打包方面通过工程验收。DeepSeek 计费请求、目标设备长时稳定性与第三方素材授权由发布者完成最终确认。
+> Iroha Agent v2.1.1 Windows 基线在构建、主要功能、视觉小说界面、事务式语音部署、安全重新部署、记忆恢复、真实语音生成和发布打包方面通过工程验收。DeepSeek 计费请求、目标设备长时稳定性与第三方素材授权由发布者完成最终确认。

@@ -1,11 +1,12 @@
 [CmdletBinding()]
 param(
-  [string]$Version = "2.1.0",
+  [string]$Version = "2.1.1",
   [string]$OutputRoot = (Join-Path ([Environment]::GetFolderPath("Desktop")) "IrohaAgent-GitHub-Releases"),
   [switch]$FullVoice,
   [string]$RuntimeArchive = $env:IROHA_RUNTIME_ARCHIVE,
   [string]$VoicePackage = $env:IROHA_VOICE_PACKAGE,
-  [switch]$KeepStaging
+  [switch]$KeepStaging,
+  [switch]$SkipQa
 )
 
 $ErrorActionPreference = "Stop"
@@ -90,7 +91,11 @@ function Copy-App([string]$Destination, [bool]$IncludesVoice) {
   }
 }
 
-& (Join-Path $desktopRoot "build.ps1")
+if ($SkipQa) {
+  & (Join-Path $desktopRoot "build.ps1")
+} else {
+  & (Join-Path $PSScriptRoot "run-regression-qa.ps1") -OutputRoot (Join-Path $stagingRoot "regression-qa")
+}
 if (-not (Test-Path -LiteralPath (Join-Path $dist "IrohaAgent.exe"))) {
   throw "Windows build did not produce IrohaAgent.exe"
 }
@@ -153,6 +158,8 @@ try {
     "- FullVoice.7z.001 and later volumes: download all parts and extract the .001 file with 7-Zip.",
     "- Android APK is intentionally not included in this release.",
     "- Release files contain no API key, chat history, memory, or user settings.",
+    "- v2.1.1 fixes cross-PC voice startup, read-only config, Numba cache, safe deployment recovery, and memory persistence.",
+    "- v2.1.1 also fixes repeated ContextMenuStrip disposal error popups in conversation history.",
     "- Confirm redistribution rights before uploading the FullVoice assets."
   ) -join [Environment]::NewLine
   Set-Content -LiteralPath (Join-Path $releaseDirectory "RELEASE_NOTES.txt") -Value $releaseNotes -Encoding UTF8

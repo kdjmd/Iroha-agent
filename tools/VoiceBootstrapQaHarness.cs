@@ -16,6 +16,22 @@ namespace IrohaAgentDesktop
         private static void Main(string[] args)
         {
             string output = GetArgument(args, "--output");
+            if (!string.IsNullOrWhiteSpace(output)) ReportPath = Path.GetFullPath(output);
+            try
+            {
+                Run(args);
+            }
+            catch (Exception ex)
+            {
+                Results.Add("ERROR " + (ex.Message ?? "Voice bootstrap QA failed"));
+                FlushResults();
+                Environment.ExitCode = 1;
+            }
+        }
+
+        private static void Run(string[] args)
+        {
+            string output = GetArgument(args, "--output");
             string workRoot = GetArgument(args, "--work-root");
             if (string.IsNullOrWhiteSpace(output) || string.IsNullOrWhiteSpace(workRoot))
             {
@@ -62,6 +78,33 @@ namespace IrohaAgentDesktop
             Assert(HashFile(voicePackage) == sourceHash, "source voice package remains byte-identical");
             Assert(HasStage(firstProgress, "正在导入彩叶语音模型"), "matching emits model import progress");
 
+            string readOnlyConfig = Path.Combine(
+                externalRuntime,
+                AppSettings.DefaultVoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(readOnlyConfig));
+            File.WriteAllText(
+                readOnlyConfig,
+                "custom:" + Environment.NewLine +
+                "  device: cpu" + Environment.NewLine +
+                "  is_half: false" + Environment.NewLine +
+                "  version: v2ProPlus" + Environment.NewLine,
+                new UTF8Encoding(false));
+            File.SetAttributes(readOnlyConfig, FileAttributes.ReadOnly);
+            string readOnlyHash = HashFile(readOnlyConfig);
+            var readOnlySettings = new AppSettings
+            {
+                VoiceRuntimeRoot = externalRuntime,
+                VoiceRuntimeConfigPath = readOnlyConfig,
+                VoiceRefAudioPath = first.RefAudioPath,
+                VoicePromptText = first.PromptText,
+                VoicePromptLang = first.PromptLang
+            };
+            VoiceBootstrapResult readOnlyResult = VoiceBootstrapper.Prepare(readOnlySettings, false, null);
+            Assert(readOnlyResult.Success, "read-only runtime config is accepted");
+            Assert(IsUnder(readOnlyResult.ConfigPath, managedBase), "read-only runtime config is copied to managed app data");
+            Assert(HashFile(readOnlyConfig) == readOnlyHash, "read-only source config remains byte-identical");
+            Assert((File.GetAttributes(readOnlyConfig) & FileAttributes.ReadOnly) != 0, "read-only source config remains protected");
+
             settings.VoiceRuntimeRoot = first.RuntimeRoot;
             settings.VoiceRuntimeConfigPath = first.ConfigPath;
             settings.VoiceRefAudioPath = first.RefAudioPath;
@@ -85,8 +128,70 @@ namespace IrohaAgentDesktop
             Assert(HasStage(redeployProgress, "正在部署 GPT-SoVITS"), "redeploy emits runtime deployment progress");
             Assert(HasStage(redeployProgress, "语音组件匹配完成"), "redeploy emits matching completion progress");
 
+            string lastGoodSentinel = Path.Combine(redeployed.RuntimeRoot, "last-good-sentinel.txt");
+            File.WriteAllText(lastGoodSentinel, "last-good", new UTF8Encoding(false));
+            string managedBackup = VoiceBootstrapper.ManagedRuntimeDirectory + ".previous";
+            Directory.Move(VoiceBootstrapper.ManagedRuntimeDirectory, managedBackup);
+            Directory.CreateDirectory(Path.Combine(VoiceBootstrapper.ManagedRuntimeDirectory, "runtime"));
+            File.WriteAllBytes(Path.Combine(VoiceBootstrapper.ManagedRuntimeDirectory, "runtime", "python.exe"), new byte[] { 77, 90, 0, 0 });
+            File.WriteAllText(Path.Combine(VoiceBootstrapper.ManagedRuntimeDirectory, "api_v2.py"), "# interrupted", new UTF8Encoding(false));
+
+            VoiceBootstrapResult recovered = VoiceBootstrapper.Prepare(settings, false, null);
+            Assert(recovered.Success, "interrupted deployment automatically restores the previous runtime");
+            Assert(File.Exists(lastGoodSentinel), "interrupted deployment recovery preserves the last good runtime");
+            Assert(!Directory.Exists(managedBackup), "interrupted deployment backup is consumed after recovery");
+
+            string marker = Path.Combine(VoiceBootstrapper.ManagedRuntimeDirectory, ".deployment-ready");
+            string markerContent = File.ReadAllText(marker, Encoding.UTF8);
+            File.Delete(marker);
+            Assert(!VoiceBootstrapper.IsRuntimeUsable(redeployed.RuntimeRoot), "partial managed runtime without readiness marker is rejected");
+            File.WriteAllText(marker, markerContent, new UTF8Encoding(false));
+
+            settings.VoiceRuntimeRoot = @"C:\Users\OtherComputer\GPT-SoVITS";
+            settings.VoiceRuntimeConfigPath = @"C:\Users\OtherComputer\missing.yaml";
+            settings.VoiceRefAudioPath = @"C:\Users\OtherComputer\missing.wav";
+            VoiceBootstrapResult movedProfile = VoiceBootstrapper.Prepare(settings, false, null);
+            Assert(movedProfile.Success, "stale paths copied from another Windows profile are rematched automatically");
+            Assert(IsUnder(movedProfile.RuntimeRoot, VoiceBootstrapper.ManagedRuntimeDirectory), "cross-profile rematch uses the managed runtime");
+
+            settings.VoiceRuntimeRoot = movedProfile.RuntimeRoot;
+            settings.VoiceRuntimeConfigPath = movedProfile.ConfigPath;
+            settings.VoiceRefAudioPath = movedProfile.RefAudioPath;
+            string brokenPartOne = Path.Combine(bundleDirectory, "GPT-SoVITS-v2pro-20250604.7z.001");
+            string brokenPartThree = Path.Combine(bundleDirectory, "GPT-SoVITS-v2pro-20250604.7z.003");
+            File.WriteAllBytes(brokenPartOne, CreateBytes(128, 7));
+            File.WriteAllBytes(brokenPartThree, CreateBytes(128, 9));
+            var incompleteProgress = new List<VoiceBootstrapProgress>();
+            VoiceBootstrapResult incompleteBundle = VoiceBootstrapper.Prepare(settings, true, incompleteProgress.Add);
+            Assert(incompleteBundle.Success, "incomplete bundled volumes fall back to the last good runtime");
+            Assert(File.Exists(lastGoodSentinel), "failed redeploy never deletes the last good runtime");
+            Assert(HasStage(incompleteProgress, "新部署未完成，已恢复旧语音"), "failed redeploy reports automatic recovery");
+
+            string emptyManagedBase = Path.Combine(workRoot, "empty-managed-base");
+            Environment.SetEnvironmentVariable("IROHA_VOICE_MANAGED_ROOT", emptyManagedBase);
+            var emptySettings = new AppSettings
+            {
+                VoiceRuntimeRoot = @"C:\Users\MissingProfile\GPT-SoVITS",
+                VoiceRuntimeConfigPath = @"C:\Users\MissingProfile\missing.yaml",
+                VoiceRefAudioPath = @"C:\Users\MissingProfile\missing.wav"
+            };
+            VoiceBootstrapResult noFallback = VoiceBootstrapper.Prepare(emptySettings, true, null);
+            Assert(!noFallback.Success, "incomplete bundled volumes fail cleanly when no previous runtime exists");
+            Assert(noFallback.Message.IndexOf("002", StringComparison.OrdinalIgnoreCase) >= 0, "missing volume error identifies the exact part");
+            Environment.SetEnvironmentVariable("IROHA_VOICE_MANAGED_ROOT", managedBase);
+            File.Delete(brokenPartOne);
+            File.Delete(brokenPartThree);
+
             string reportDirectory = Path.GetDirectoryName(ReportPath);
             if (!string.IsNullOrWhiteSpace(reportDirectory)) Directory.CreateDirectory(reportDirectory);
+            File.WriteAllLines(ReportPath, Results.ToArray(), new UTF8Encoding(false));
+        }
+
+        private static void FlushResults()
+        {
+            if (string.IsNullOrWhiteSpace(ReportPath)) return;
+            string directory = Path.GetDirectoryName(ReportPath);
+            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
             File.WriteAllLines(ReportPath, Results.ToArray(), new UTF8Encoding(false));
         }
 

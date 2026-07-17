@@ -9,6 +9,7 @@ using System.Media;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
@@ -85,6 +86,8 @@ namespace IrohaAgentDesktop
 
     internal static class Program
     {
+        private static int errorDialogShown;
+
         [STAThread]
         private static void Main()
         {
@@ -116,10 +119,11 @@ namespace IrohaAgentDesktop
 
         private static void ShowStartupError(Exception exception)
         {
+            if (System.Threading.Interlocked.Exchange(ref errorDialogShown, 1) != 0) return;
             try
             {
                 string dir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "IrohaLocalAgent");
                 Directory.CreateDirectory(dir);
                 string log = Path.Combine(dir, "crash.log");
@@ -128,7 +132,7 @@ namespace IrohaAgentDesktop
                     Convert.ToString(exception) + Environment.NewLine + Environment.NewLine,
                     Encoding.UTF8);
                 MessageBox.Show(
-                    "彩叶 Agent 暂时没能启动。请重新打开应用；如果仍然失败，我可以继续帮你检查。",
+                    "彩叶 Agent 暂时遇到问题。本次运行不会重复弹出；请重新打开应用。",
                     "彩叶 Agent",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
@@ -224,23 +228,244 @@ namespace IrohaAgentDesktop
         }
     }
 
+    internal static class SafeJsonFileStore
+    {
+        private static readonly object SyncRoot = new object();
+
+        public static T Load<T>(string path, JavaScriptSerializer serializer, Func<T> createDefault)
+            where T : class
+        {
+            lock (SyncRoot)
+            {
+                T value;
+                if (TryRead(path, serializer, out value)) return value;
+
+                string backup = path + ".bak";
+                if (TryRead(backup, serializer, out value))
+                {
+                    TryRestoreBackup(path, backup);
+                    return value;
+                }
+                return createDefault();
+            }
+        }
+
+        public static void Save<T>(string path, T value, JavaScriptSerializer serializer)
+        {
+            lock (SyncRoot)
+            {
+                string directory = Path.GetDirectoryName(path);
+                if (string.IsNullOrWhiteSpace(directory))
+                {
+                    throw new InvalidOperationException("用户数据目录无效");
+                }
+                Directory.CreateDirectory(directory);
+
+                string temporary = path + ".tmp";
+                string backup = path + ".bak";
+                try
+                {
+                    string json = serializer.Serialize(value);
+                    using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                    {
+                        writer.Write(json);
+                        writer.Flush();
+                        stream.Flush(true);
+                    }
+
+                    if (!File.Exists(path))
+                    {
+                        File.Move(temporary, path);
+                        return;
+                    }
+
+                    try
+                    {
+                        File.Replace(temporary, path, backup, true);
+                    }
+                    catch (PlatformNotSupportedException)
+                    {
+                        ReplaceWithPortableFallback(temporary, path, backup);
+                    }
+                    catch (IOException)
+                    {
+                        ReplaceWithPortableFallback(temporary, path, backup);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        ReplaceWithPortableFallback(temporary, path, backup);
+                    }
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(temporary)) File.Delete(temporary);
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        private static bool TryRead<T>(string path, JavaScriptSerializer serializer, out T value)
+            where T : class
+        {
+            value = null;
+            if (!File.Exists(path)) return false;
+            try
+            {
+                string json = File.ReadAllText(path, Encoding.UTF8);
+                if (string.IsNullOrWhiteSpace(json)) return false;
+                value = serializer.Deserialize<T>(json);
+                return value != null;
+            }
+            catch
+            {
+                value = null;
+                return false;
+            }
+        }
+
+        private static void ReplaceWithPortableFallback(string temporary, string path, string backup)
+        {
+            File.Copy(path, backup, true);
+            File.Delete(path);
+            File.Move(temporary, path);
+        }
+
+        private static void TryRestoreBackup(string path, string backup)
+        {
+            string temporary = path + ".recover";
+            try
+            {
+                File.Copy(backup, temporary, true);
+                if (File.Exists(path))
+                {
+                    string corrupt = path + ".corrupt";
+                    try { File.Copy(path, corrupt, true); }
+                    catch { }
+                    try
+                    {
+                        File.Replace(temporary, path, null, true);
+                    }
+                    catch
+                    {
+                        File.Delete(path);
+                        File.Move(temporary, path);
+                    }
+                }
+                else
+                {
+                    File.Move(temporary, path);
+                }
+            }
+            catch { }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(temporary)) File.Delete(temporary);
+                }
+                catch { }
+            }
+        }
+    }
+
+    internal static class MemoryCapture
+    {
+        public const int MaxNotes = 80;
+
+        public static bool TryCreateNote(string text, out string noteBody)
+        {
+            noteBody = "";
+            string value = NormalizeText(text);
+            if (value.Length < 2 || ContainsSensitiveValue(value)) return false;
+
+            bool explicitRemember = ContainsAny(value, "记住", "记得", "请记住", "请记得");
+            bool durableStatement = IsDurableStatement(value);
+            bool futurePreference = value.IndexOf("以后", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                ContainsAny(value, "叫我", "称呼", "回复", "语气", "语言", "格式", "不要", "希望你", "请");
+
+            if (!explicitRemember && !durableStatement && !futurePreference) return false;
+            if (!explicitRemember && !durableStatement && LooksLikeOneOffTask(value)) return false;
+
+            noteBody = value.Length > 240 ? value.Substring(0, 240).Trim() : value;
+            return noteBody.Length >= 2;
+        }
+
+        public static string CanonicalizeStoredNote(string note)
+        {
+            string value = NormalizeText(note);
+            int prefix = value.IndexOf('：');
+            if (prefix >= 0 && prefix + 1 < value.Length)
+            {
+                value = value.Substring(prefix + 1).Trim();
+            }
+            return value.ToLowerInvariant();
+        }
+
+        public static string NormalizeText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            return Regex.Replace(text.Trim(), @"\s+", " ");
+        }
+
+        private static bool IsDurableStatement(string value)
+        {
+            if (StartsWithAny(value, "我叫", "请叫我", "叫我", "称呼我")) return true;
+            if (StartsWithAny(value, "我喜欢", "我很喜欢", "我不喜欢", "我讨厌", "我偏爱", "我习惯")) return true;
+            if (StartsWithAny(
+                value,
+                "我的名字", "我的昵称", "我的称呼", "我的生日", "我的职业", "我的工作是",
+                "我的家乡", "我的城市", "我的目标", "我的偏好", "我的习惯", "我的兴趣",
+                "我的爱好", "我的禁忌")) return true;
+            if (value.StartsWith("我对", StringComparison.OrdinalIgnoreCase) &&
+                ContainsAny(value, "过敏", "不能吃", "不耐受")) return true;
+            if (value.StartsWith("我是", StringComparison.OrdinalIgnoreCase) &&
+                !StartsWithAny(value, "我是想", "我是要", "我是说", "我是让", "我是希望")) return true;
+            return false;
+        }
+
+        private static bool LooksLikeOneOffTask(string value)
+        {
+            return ContainsAny(
+                value,
+                "帮我", "请你", "怎么", "如何", "检查", "修复", "修改", "制作", "设计",
+                "生成", "写一", "上传", "下载", "打开", "分析", "整理这个", "完成这个");
+        }
+
+        private static bool ContainsSensitiveValue(string value)
+        {
+            return ContainsAny(value, "api key", "apikey", "密钥", "密码", "口令", "access token", "sk-");
+        }
+
+        private static bool ContainsAny(string value, params string[] markers)
+        {
+            foreach (string marker in markers)
+            {
+                if (value.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            return false;
+        }
+
+        private static bool StartsWithAny(string value, params string[] markers)
+        {
+            foreach (string marker in markers)
+            {
+                if (value.StartsWith(marker, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
+    }
+
     internal static class SettingsStore
     {
         private static readonly JavaScriptSerializer Serializer = new JavaScriptSerializer();
 
         public static string DirectoryPath
         {
-            get
-            {
-                string configured = Environment.GetEnvironmentVariable("IROHA_APP_DATA_ROOT");
-                if (!string.IsNullOrWhiteSpace(configured))
-                {
-                    return Path.GetFullPath(configured.Trim().Trim('"'));
-                }
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "IrohaLocalAgent");
-            }
+            get { return ResolveDirectoryPath(); }
         }
 
         public static string FilePath
@@ -250,42 +475,80 @@ namespace IrohaAgentDesktop
 
         public static AppSettings Load()
         {
-            Directory.CreateDirectory(DirectoryPath);
-            if (!File.Exists(FilePath))
+            AppSettings settings = SafeJsonFileStore.Load(
+                FilePath,
+                Serializer,
+                delegate { return new AppSettings(); });
+            if (string.IsNullOrWhiteSpace(settings.Model)) settings.Model = "deepseek-v4-flash";
+            if (string.IsNullOrWhiteSpace(settings.VoiceServerUrl)) settings.VoiceServerUrl = "http://127.0.0.1:9880";
+            if (string.IsNullOrWhiteSpace(settings.VoiceRuntimeRoot)) settings.VoiceRuntimeRoot = AppSettings.DefaultVoiceRuntimeRoot;
+            if (string.IsNullOrWhiteSpace(settings.VoiceRuntimeConfigPath))
             {
-                return new AppSettings();
+                settings.VoiceRuntimeConfigPath = Path.Combine(
+                    settings.VoiceRuntimeRoot,
+                    AppSettings.DefaultVoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar));
             }
-
-            try
-            {
-                string json = File.ReadAllText(FilePath, Encoding.UTF8);
-                AppSettings settings = Serializer.Deserialize<AppSettings>(json);
-                if (settings == null) return new AppSettings();
-                if (string.IsNullOrWhiteSpace(settings.Model)) settings.Model = "deepseek-v4-flash";
-                if (string.IsNullOrWhiteSpace(settings.VoiceServerUrl)) settings.VoiceServerUrl = "http://127.0.0.1:9880";
-                if (string.IsNullOrWhiteSpace(settings.VoiceRuntimeRoot)) settings.VoiceRuntimeRoot = AppSettings.DefaultVoiceRuntimeRoot;
-                if (string.IsNullOrWhiteSpace(settings.VoiceRuntimeConfigPath))
-                {
-                    settings.VoiceRuntimeConfigPath = Path.Combine(
-                        settings.VoiceRuntimeRoot,
-                        AppSettings.DefaultVoiceRuntimeConfig.Replace('/', Path.DirectorySeparatorChar));
-                }
-                if (string.IsNullOrWhiteSpace(settings.VoiceRefAudioPath)) settings.VoiceRefAudioPath = AppSettings.DefaultVoiceRefAudioPath;
-                if (string.IsNullOrWhiteSpace(settings.VoicePromptText)) settings.VoicePromptText = AppSettings.DefaultVoicePromptText;
-                if (string.IsNullOrWhiteSpace(settings.VoicePromptLang)) settings.VoicePromptLang = AppSettings.DefaultVoicePromptLang;
-                return settings;
-            }
-            catch
-            {
-                return new AppSettings();
-            }
+            if (string.IsNullOrWhiteSpace(settings.VoiceRefAudioPath)) settings.VoiceRefAudioPath = AppSettings.DefaultVoiceRefAudioPath;
+            if (string.IsNullOrWhiteSpace(settings.VoicePromptText)) settings.VoicePromptText = AppSettings.DefaultVoicePromptText;
+            if (string.IsNullOrWhiteSpace(settings.VoicePromptLang)) settings.VoicePromptLang = AppSettings.DefaultVoicePromptLang;
+            return settings;
         }
 
         public static void Save(AppSettings settings)
         {
-            Directory.CreateDirectory(DirectoryPath);
-            string json = Serializer.Serialize(settings);
-            File.WriteAllText(FilePath, json, Encoding.UTF8);
+            SafeJsonFileStore.Save(FilePath, settings ?? new AppSettings(), Serializer);
+        }
+
+        private static string ResolveDirectoryPath()
+        {
+            string configured = Environment.GetEnvironmentVariable("IROHA_APP_DATA_ROOT");
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                string explicitPath = Path.GetFullPath(configured.Trim().Trim('"'));
+                Directory.CreateDirectory(explicitPath);
+                return explicitPath;
+            }
+
+            string roaming = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "IrohaLocalAgent");
+            if (File.Exists(Path.Combine(roaming, "settings.json")) || File.Exists(Path.Combine(roaming, "memory.json")))
+            {
+                return roaming;
+            }
+
+            string local = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "IrohaLocalAgent");
+            if (TryEnsureWritableDirectory(local)) return local;
+            if (TryEnsureWritableDirectory(roaming)) return roaming;
+
+            string portable = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "user-data");
+            if (TryEnsureWritableDirectory(portable)) return portable;
+            throw new IOException("没有可写的用户数据目录");
+        }
+
+        private static bool TryEnsureWritableDirectory(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            string probe = null;
+            try
+            {
+                Directory.CreateDirectory(path);
+                probe = Path.Combine(path, ".write-test-" + Guid.NewGuid().ToString("N"));
+                File.WriteAllText(probe, "ok", Encoding.ASCII);
+                File.Delete(probe);
+                return true;
+            }
+            catch
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(probe) && File.Exists(probe)) File.Delete(probe);
+                }
+                catch { }
+                return false;
+            }
         }
     }
 
@@ -300,28 +563,54 @@ namespace IrohaAgentDesktop
 
         public static AgentMemory Load()
         {
-            Directory.CreateDirectory(SettingsStore.DirectoryPath);
-            if (!File.Exists(FilePath))
-            {
-                return new AgentMemory();
-            }
-
-            try
-            {
-                string json = File.ReadAllText(FilePath, Encoding.UTF8);
-                AgentMemory memory = Serializer.Deserialize<AgentMemory>(json);
-                return memory ?? new AgentMemory();
-            }
-            catch
-            {
-                return new AgentMemory();
-            }
+            AgentMemory memory = SafeJsonFileStore.Load(
+                FilePath,
+                Serializer,
+                delegate { return new AgentMemory(); });
+            return Normalize(memory);
         }
 
         public static void Save(AgentMemory memory)
         {
-            Directory.CreateDirectory(SettingsStore.DirectoryPath);
-            File.WriteAllText(FilePath, Serializer.Serialize(memory ?? new AgentMemory()), Encoding.UTF8);
+            SafeJsonFileStore.Save(FilePath, Normalize(memory), Serializer);
+        }
+
+        public static bool TrySave(AgentMemory memory, out string error)
+        {
+            try
+            {
+                Save(memory);
+                error = "";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        private static AgentMemory Normalize(AgentMemory memory)
+        {
+            var normalized = new AgentMemory();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (memory != null && memory.Notes != null)
+            {
+                foreach (string raw in memory.Notes)
+                {
+                    string note = MemoryCapture.NormalizeText(raw);
+                    if (note.Length == 0) continue;
+                    if (note.Length > 360) note = note.Substring(0, 360).Trim();
+                    string key = MemoryCapture.CanonicalizeStoredNote(note);
+                    if (key.Length == 0 || !seen.Add(key)) continue;
+                    normalized.Notes.Add(note);
+                }
+            }
+            while (normalized.Notes.Count > MemoryCapture.MaxNotes)
+            {
+                normalized.Notes.RemoveAt(0);
+            }
+            return normalized;
         }
     }
 
@@ -352,6 +641,8 @@ namespace IrohaAgentDesktop
         private readonly JavaScriptSerializer serializer = new JavaScriptSerializer();
         private readonly List<Dictionary<string, string>> history = new List<Dictionary<string, string>>();
         private readonly object voiceStartupLock = new object();
+        private readonly object voiceDiagnosticLock = new object();
+        private readonly StringBuilder voiceServiceDiagnostics = new StringBuilder();
 
         private AppSettings settings;
         private AgentMemory memory;
@@ -1522,7 +1813,6 @@ namespace IrohaAgentDesktop
             if (activeConversationMenu != null && !activeConversationMenu.IsDisposed)
             {
                 activeConversationMenu.Close();
-                activeConversationMenu.Dispose();
             }
             var menu = new ContextMenuStrip();
             activeConversationMenu = menu;
@@ -1563,14 +1853,27 @@ namespace IrohaAgentDesktop
             };
             menu.Closed += delegate
             {
-                if (!IsHandleCreated || IsDisposed) return;
-                BeginInvoke(new Action(delegate
-                {
-                    if (ReferenceEquals(activeConversationMenu, menu)) activeConversationMenu = null;
-                    if (!menu.IsDisposed) menu.Dispose();
-                }));
+                if (ReferenceEquals(activeConversationMenu, menu)) activeConversationMenu = null;
+                DisposeConversationMenuLater(menu);
             };
             menu.Show(item, location);
+        }
+
+        private static void DisposeConversationMenuLater(ContextMenuStrip menu)
+        {
+            if (menu == null || menu.IsDisposed) return;
+            var cleanupTimer = new Timer();
+            cleanupTimer.Interval = 500;
+            EventHandler cleanup = null;
+            cleanup = delegate
+            {
+                cleanupTimer.Stop();
+                cleanupTimer.Tick -= cleanup;
+                if (!menu.IsDisposed && !menu.Visible) menu.Dispose();
+                cleanupTimer.Dispose();
+            };
+            cleanupTimer.Tick += cleanup;
+            cleanupTimer.Start();
         }
 
         private void RenameConversation(ConversationItemControl item)
@@ -2365,10 +2668,22 @@ namespace IrohaAgentDesktop
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    memory = dialog.Memory;
-                    MemoryStore.Save(memory);
-                    SyncQuickSettingsView();
-                    SetStatus("记忆已更新", AvatarState.Happy);
+                    string saveError;
+                    if (MemoryStore.TrySave(dialog.Memory, out saveError))
+                    {
+                        memory = MemoryStore.Load();
+                        SyncQuickSettingsView();
+                        SetStatus("记忆已更新", AvatarState.Happy);
+                    }
+                    else
+                    {
+                        SetStatus("记忆未能保存", AvatarState.Error);
+                        MessageBox.Show(
+                            "记忆没有写入成功，请确认当前 Windows 用户的数据目录可写。\n\n" + saveError,
+                            "彩叶 Agent",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
                 }
             }
         }
@@ -2568,27 +2883,53 @@ namespace IrohaAgentDesktop
 
             if (!StartBundledVoiceService())
             {
-                voiceSetupMessage = "GPT-SoVITS 服务未能启动";
+                if (string.IsNullOrWhiteSpace(voiceSetupMessage)) voiceSetupMessage = "GPT-SoVITS 服务未能启动";
                 return false;
             }
-            for (int i = 0; i < 240; i++)
+            TimeSpan startupTimeout = GetVoiceStartupTimeout();
+            Stopwatch startupTimer = Stopwatch.StartNew();
+            while (startupTimer.Elapsed < startupTimeout)
             {
-                await Task.Delay(1000);
+                int exitCode;
+                if (HasOwnedVoiceServiceExited(out exitCode))
+                {
+                    string diagnostic = GetVoiceServiceDiagnostic();
+                    voiceSetupMessage = "GPT-SoVITS 启动后退出（代码 " + exitCode + "）" +
+                        (string.IsNullOrWhiteSpace(diagnostic) ? "" : "：" + Limit(diagnostic, 180));
+                    return false;
+                }
                 if (await IsVoiceServiceReadyAsync())
                 {
                     voiceSetupMessage = result.RuntimeDeployed ? "首次部署完成，以后启动会自动连接" : "彩叶语音已自动匹配";
                     if (progress != null) progress(new VoiceBootstrapProgress(100, "彩叶的声音已经准备好了", voiceSetupMessage, false));
                     return true;
                 }
-                if (progress != null && i % 3 == 0)
+
+                int elapsedSeconds = Math.Max(1, (int)startupTimer.Elapsed.TotalSeconds);
+                if (progress != null && elapsedSeconds % 3 == 0)
                 {
-                    int percent = Math.Min(99, 88 + i / 20);
-                    progress(new VoiceBootstrapProgress(percent, "正在启动 GPT-SoVITS", "正在加载语音模型 · " + (i + 1) + " 秒", true));
+                    int percent = Math.Min(99, 88 + elapsedSeconds / 50);
+                    progress(new VoiceBootstrapProgress(percent, "正在启动 GPT-SoVITS", "正在加载语音模型 · " + elapsedSeconds + " 秒", true));
                 }
+                await Task.Delay(1000);
             }
 
-            voiceSetupMessage = "语音服务启动超时，可在设置中重新部署";
+            string timeoutDiagnostic = GetVoiceServiceDiagnostic();
+            StopOwnedVoiceService();
+            voiceSetupMessage = "语音服务加载超过 " + (int)startupTimeout.TotalMinutes + " 分钟" +
+                (string.IsNullOrWhiteSpace(timeoutDiagnostic) ? "，可在设置中重新部署" : "：" + Limit(timeoutDiagnostic, 180));
             return false;
+        }
+
+        private TimeSpan GetVoiceStartupTimeout()
+        {
+            int seconds;
+            string configured = Environment.GetEnvironmentVariable("IROHA_VOICE_STARTUP_TIMEOUT_SECONDS");
+            if (int.TryParse(configured, out seconds) && seconds >= 15 && seconds <= 1200)
+            {
+                return TimeSpan.FromSeconds(seconds);
+            }
+            return TimeSpan.FromMinutes(10);
         }
 
         private bool CanStartBundledVoiceService()
@@ -2607,20 +2948,54 @@ namespace IrohaAgentDesktop
                 StopOwnedVoiceService();
                 string root = settings.VoiceRuntimeRoot ?? "";
                 string python = Path.Combine(root, "runtime", "python.exe");
+                string api = Path.Combine(root, "api_v2.py");
                 string config = VoiceBootstrapper.ResolveConfigPath(settings);
+                string cacheDirectory;
+                string launcher = EnsureVoiceLauncher(out cacheDirectory);
+                int port = GetConfiguredVoicePort();
+                if (!IsTcpPortAvailable(port))
+                {
+                    port = FindAvailableVoicePort();
+                    if (port <= 0)
+                    {
+                        voiceSetupMessage = "本机 9880-9899 端口均被占用，无法启动语音服务";
+                        return false;
+                    }
+                    settings.VoiceServerUrl = "http://127.0.0.1:" + port;
+                    SettingsStore.Save(settings);
+                }
+
                 var startInfo = new ProcessStartInfo();
                 startInfo.FileName = python;
-                startInfo.Arguments = "\"api_v2.py\" -a 127.0.0.1 -p 9880 -c \"" + config + "\"";
+                startInfo.Arguments =
+                    "-X utf8 -u \"" + launcher + "\" \"" + api + "\" \"" + cacheDirectory +
+                    "\" -a 127.0.0.1 -p " + port + " -c \"" + config + "\"";
                 startInfo.WorkingDirectory = root;
                 startInfo.UseShellExecute = false;
                 startInfo.CreateNoWindow = true;
                 startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                startInfo.EnvironmentVariables["PYTHONUTF8"] = "1";
-                voiceServiceProcess = Process.Start(startInfo);
-                if (voiceServiceProcess == null)
+                startInfo.RedirectStandardOutput = true;
+                startInfo.RedirectStandardError = true;
+
+                lock (voiceDiagnosticLock) voiceServiceDiagnostics.Clear();
+                var process = new Process();
+                process.StartInfo = startInfo;
+                process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e)
                 {
+                    CaptureVoiceServiceDiagnostic(e.Data);
+                };
+                process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e)
+                {
+                    CaptureVoiceServiceDiagnostic(e.Data);
+                };
+                if (!process.Start())
+                {
+                    process.Dispose();
                     return false;
                 }
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                voiceServiceProcess = process;
                 return true;
             }
             catch (Exception ex)
@@ -2628,6 +3003,40 @@ namespace IrohaAgentDesktop
                 voiceSetupMessage = "语音服务启动失败: " + ex.Message;
                 return false;
             }
+        }
+
+        private string EnsureVoiceLauncher(out string cacheDirectory)
+        {
+            string launcherDirectory = Path.Combine(VoiceBootstrapper.ManagedBaseDirectory, "VoiceCache");
+            cacheDirectory = Path.Combine(launcherDirectory, "numba");
+            Directory.CreateDirectory(cacheDirectory);
+            string launcherPath = Path.Combine(launcherDirectory, "start_voice.py");
+            const string script =
+                "import os\n" +
+                "import runpy\n" +
+                "import sys\n\n" +
+                "api_path = os.path.abspath(sys.argv[1])\n" +
+                "cache_path = os.path.abspath(sys.argv[2])\n" +
+                "os.makedirs(cache_path, exist_ok=True)\n" +
+                "os.environ['NUMBA_CACHE_DIR'] = cache_path\n" +
+                "sys.argv = [api_path] + sys.argv[3:]\n" +
+                "runpy.run_path(api_path, run_name='__main__')\n";
+
+            if (!File.Exists(launcherPath) || !string.Equals(File.ReadAllText(launcherPath, Encoding.UTF8), script, StringComparison.Ordinal))
+            {
+                string temporary = launcherPath + ".tmp-" + Guid.NewGuid().ToString("N");
+                try
+                {
+                    File.WriteAllText(temporary, script, new UTF8Encoding(false));
+                    if (File.Exists(launcherPath)) File.Delete(launcherPath);
+                    File.Move(temporary, launcherPath);
+                }
+                finally
+                {
+                    if (File.Exists(temporary)) File.Delete(temporary);
+                }
+            }
+            return launcherPath;
         }
 
         private void StopOwnedVoiceService()
@@ -2657,14 +3066,95 @@ namespace IrohaAgentDesktop
 
             try
             {
-                using (var client = new HttpClient())
+                using (var handler = new HttpClientHandler())
+                using (var client = new HttpClient(handler))
                 {
-                    client.Timeout = TimeSpan.FromSeconds(2);
-                    using (HttpResponseMessage response = await client.GetAsync(baseUrl + "/docs"))
+                    handler.UseProxy = false;
+                    client.Timeout = TimeSpan.FromMilliseconds(1500);
+                    using (HttpResponseMessage response = await client.GetAsync(baseUrl + "/openapi.json"))
                     {
-                        return response.IsSuccessStatusCode;
+                        if (!response.IsSuccessStatusCode) return false;
+                        string document = await response.Content.ReadAsStringAsync();
+                        return document.IndexOf("/tts", StringComparison.OrdinalIgnoreCase) >= 0;
                     }
                 }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private int GetConfiguredVoicePort()
+        {
+            Uri uri;
+            if (Uri.TryCreate(GetVoiceBaseUrl(), UriKind.Absolute, out uri) && uri.Port > 0)
+            {
+                return uri.Port;
+            }
+            return 9880;
+        }
+
+        private int FindAvailableVoicePort()
+        {
+            for (int port = 9880; port <= 9899; port++)
+            {
+                if (IsTcpPortAvailable(port)) return port;
+            }
+            return -1;
+        }
+
+        private bool IsTcpPortAvailable(int port)
+        {
+            System.Net.Sockets.TcpListener listener = null;
+            try
+            {
+                listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, port);
+                listener.Start();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                if (listener != null)
+                {
+                    try { listener.Stop(); }
+                    catch { }
+                }
+            }
+        }
+
+        private void CaptureVoiceServiceDiagnostic(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return;
+            lock (voiceDiagnosticLock)
+            {
+                if (voiceServiceDiagnostics.Length >= 1600) return;
+                voiceServiceDiagnostics.AppendLine(line.Trim());
+            }
+        }
+
+        private string GetVoiceServiceDiagnostic()
+        {
+            lock (voiceDiagnosticLock)
+            {
+                return Regex.Replace(voiceServiceDiagnostics.ToString(), @"\s+", " ").Trim();
+            }
+        }
+
+        private bool HasOwnedVoiceServiceExited(out int exitCode)
+        {
+            exitCode = 0;
+            Process process = voiceServiceProcess;
+            if (process == null) return false;
+            try
+            {
+                if (!process.HasExited) return false;
+                exitCode = process.ExitCode;
+                return true;
             }
             catch
             {
@@ -2959,7 +3449,7 @@ namespace IrohaAgentDesktop
                 return "";
             }
 
-            int start = Math.Max(0, memory.Notes.Count - 12);
+            int start = Math.Max(0, memory.Notes.Count - 16);
             var builder = new StringBuilder();
             for (int i = start; i < memory.Notes.Count; i++)
             {
@@ -3025,41 +3515,35 @@ namespace IrohaAgentDesktop
         private void RememberFromUserInput(string text)
         {
             if (!settings.MemoryEnabled || string.IsNullOrWhiteSpace(text)) return;
-            string trimmed = text.Trim();
-            if (!ShouldRemember(trimmed)) return;
-            string note = DateTime.Now.ToString("yyyy-MM-dd") + " 用户说：" + Limit(trimmed, 140);
+            string noteBody;
+            if (!MemoryCapture.TryCreateNote(text, out noteBody)) return;
+            string note = DateTime.Now.ToString("yyyy-MM-dd") + " 用户偏好：" + noteBody;
             if (memory == null) memory = new AgentMemory();
             if (memory.Notes == null) memory.Notes = new List<string>();
+            string candidateKey = MemoryCapture.CanonicalizeStoredNote(note);
             foreach (string existing in memory.Notes)
             {
-                if (existing.EndsWith(Limit(trimmed, 140), StringComparison.Ordinal))
+                if (string.Equals(
+                    MemoryCapture.CanonicalizeStoredNote(existing),
+                    candidateKey,
+                    StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }
             }
             memory.Notes.Add(note);
-            while (memory.Notes.Count > 40)
+            while (memory.Notes.Count > MemoryCapture.MaxNotes)
             {
                 memory.Notes.RemoveAt(0);
             }
-            MemoryStore.Save(memory);
-        }
-
-        private bool ShouldRemember(string text)
-        {
-            string[] markers =
+            string saveError;
+            if (!MemoryStore.TrySave(memory, out saveError))
             {
-                "记住", "以后", "我叫", "我是", "我喜欢", "我不喜欢",
-                "我的", "偏好", "习惯", "称呼我", "希望你", "我想要"
-            };
-            foreach (string marker in markers)
-            {
-                if (text.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return true;
-                }
+                memory = MemoryStore.Load();
+                AddFeedback("长期记忆未保存: " + saveError);
+                return;
             }
-            return false;
+            SyncQuickSettingsView();
         }
 
         private string ExtractChoiceContent(string responseText)
@@ -6948,7 +7432,7 @@ namespace IrohaAgentDesktop
             Settings.BaseUrl = "https://api.deepseek.com";
             Settings.Model = Convert.ToString(modelBox.SelectedItem, CultureInfo.InvariantCulture);
             if (string.IsNullOrWhiteSpace(Settings.Model)) Settings.Model = "deepseek-v4-flash";
-            Settings.VoiceServerUrl = "http://127.0.0.1:9880";
+            Settings.VoiceServerUrl = DefaultIfBlank(Settings.VoiceServerUrl, "http://127.0.0.1:9880");
             Settings.VoiceRuntimeRoot = DefaultIfBlank(Settings.VoiceRuntimeRoot, AppSettings.DefaultVoiceRuntimeRoot);
             Settings.VoiceRuntimeConfigPath = DefaultIfBlank(
                 Settings.VoiceRuntimeConfigPath,

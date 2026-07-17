@@ -1,0 +1,33 @@
+PASS: occupied voice port is detected
+PASS: released voice port becomes available
+PASS: configured local voice port is preserved
+PASS: borderless window
+PASS: declared minimum viewport
+PASS: primary composer and voice playback visible
+PASS: VN dialogue populated
+PASS: primary controls inside standard viewport
+PASS: four quick actions
+PASS: quick action populates composer
+PASS: conversation history populated
+PASS: pin state toggles
+PASS: pinned conversation moves first
+PASS: pin state restores
+PASS: conversation menu opens
+PASS: conversation menu exposes rename, pin, and delete
+PASS: conversation menu survives the closing input message
+PASS: conversation menu disposes after deferred cleanup
+PASS: settings tool opens and selects the drawer
+PASS: settings exposes voice redeploy
+PASS: voice redeploy stays inside settings drawer
+PASS: voice redeploy does not overlap prompt optimization
+PASS: settings drawer clears the right tool rail
+PASS: settings drawer clears the voice dock
+PASS: settings drawer closes
+PASS: appearance tool provides selected feedback
+PASS: model badge clears the product title
+PASS: model badge keeps title spacing
+PASS: model badge state accepts Pro
+PASS: speaking state activates
+PASS: compact viewport hides secondary cards
+PASS: compact viewport preserves primary workflow
+PASS: primary controls inside compact viewport

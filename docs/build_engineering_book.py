@@ -190,10 +190,10 @@ def add_cover(doc):
     p_pr.append(borders)
 
     for label, value in (
-        ("Baseline", "2.1.0"),
+        ("Baseline", "2.1.1"),
         ("Platform", "Windows 10/11 x64"),
         ("Status", "Conditional acceptance"),
-        ("Date", "2026-07-16"),
+        ("Date", "2026-07-17"),
     ):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -439,7 +439,7 @@ def build(markdown_path: Path, output_path: Path):
 
     core = document.core_properties
     core.title = "彩叶 Iroha Agent Windows 工程验收与交接手册"
-    core.subject = "Iroha Agent 2.1.0 Windows engineering acceptance and handover"
+    core.subject = "Iroha Agent 2.1.1 Windows engineering acceptance and handover"
     core.author = "Iroha Agent Project"
     core.keywords = "Iroha Agent, Windows, engineering, acceptance, handover, GPT-SoVITS"
     core.comments = "Generated from the repository Markdown source."

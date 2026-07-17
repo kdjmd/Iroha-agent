@@ -17,6 +17,20 @@ namespace IrohaAgentDesktop
         [STAThread]
         private static void Main(string[] args)
         {
+            try
+            {
+                Run(args);
+            }
+            catch (Exception ex)
+            {
+                liveResults.Add("ERROR " + NormalizeDiagnostic(ex.Message));
+                FlushResults();
+                Environment.ExitCode = 1;
+            }
+        }
+
+        private static void Run(string[] args)
+        {
             string output = GetArgument(args, "--output");
             if (string.IsNullOrWhiteSpace(output))
             {
@@ -38,7 +52,29 @@ namespace IrohaAgentDesktop
                 settings.VoicePromptLang = AppSettings.DefaultVoicePromptLang;
 
                 Task<bool> readyTask = (Task<bool>)InvokePrivateMethod(form, "EnsureVoiceServiceReadyAsync");
-                Assert(readyTask.GetAwaiter().GetResult(), "voice service health check", results);
+                var startupTimer = Stopwatch.StartNew();
+                int nextHeartbeat = 30;
+                while (!readyTask.Wait(5000))
+                {
+                    int elapsedSeconds = (int)startupTimer.Elapsed.TotalSeconds;
+                    if (elapsedSeconds < nextHeartbeat) continue;
+                    string currentDiagnostics = Convert.ToString(InvokePrivateMethod(form, "GetVoiceServiceDiagnostic"));
+                    results.Add(
+                        "INFO  voice_startup_elapsed_seconds=" + elapsedSeconds +
+                        " diagnostics=" + NormalizeDiagnostic(currentDiagnostics));
+                    FlushResults();
+                    nextHeartbeat += 30;
+                }
+                bool serviceReady = readyTask.GetAwaiter().GetResult();
+                if (!serviceReady)
+                {
+                    string setupMessage = GetPrivateField<string>(form, "voiceSetupMessage");
+                    string diagnostics = Convert.ToString(InvokePrivateMethod(form, "GetVoiceServiceDiagnostic"));
+                    results.Add("INFO  voice_setup_message=" + NormalizeDiagnostic(setupMessage));
+                    results.Add("INFO  voice_process_diagnostics=" + NormalizeDiagnostic(diagnostics));
+                    FlushResults();
+                }
+                Assert(serviceReady, "voice service health check", results);
 
                 var timer = Stopwatch.StartNew();
                 Task<string> prepareTask = (Task<string>)InvokePrivateMethod(
@@ -169,6 +205,12 @@ namespace IrohaAgentDesktop
             string directory = Path.GetDirectoryName(reportPath);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
             File.WriteAllLines(reportPath, liveResults.ToArray(), new UTF8Encoding(false));
+        }
+
+        private static string NormalizeDiagnostic(string value)
+        {
+            string clean = (value ?? "").Replace("\r", " ").Replace("\n", " ").Trim();
+            return clean.Length <= 600 ? clean : clean.Substring(0, 599) + "…";
         }
 
         private static string GetArgument(string[] args, string name)

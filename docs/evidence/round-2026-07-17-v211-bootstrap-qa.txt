@@ -1,0 +1,36 @@
+PASS  first-run matching succeeds
+PASS  existing external runtime is reused
+PASS  voice package is imported automatically
+PASS  managed GPT-SoVITS config is generated
+PASS  generated config defaults to CPU compatibility mode
+PASS  generated config defaults to full precision
+PASS  reference audio is imported
+PASS  reference language is normalized to ja
+PASS  reference transcript is imported
+PASS  generated config stays in managed app data
+PASS  external runtime remains untouched after matching
+PASS  source voice package remains byte-identical
+PASS  matching emits model import progress
+PASS  read-only runtime config is accepted
+PASS  read-only runtime config is copied to managed app data
+PASS  read-only source config remains byte-identical
+PASS  read-only source config remains protected
+PASS  forced redeploy succeeds
+PASS  bundled runtime archive is deployed
+PASS  redeployed runtime stays in managed app data
+PASS  stale managed runtime content is replaced
+PASS  forced redeploy never removes the external runtime
+PASS  forced redeploy never modifies the source voice package
+PASS  redeploy emits runtime deployment progress
+PASS  redeploy emits matching completion progress
+PASS  interrupted deployment automatically restores the previous runtime
+PASS  interrupted deployment recovery preserves the last good runtime
+PASS  interrupted deployment backup is consumed after recovery
+PASS  partial managed runtime without readiness marker is rejected
+PASS  stale paths copied from another Windows profile are rematched automatically
+PASS  cross-profile rematch uses the managed runtime
+PASS  incomplete bundled volumes fall back to the last good runtime
+PASS  failed redeploy never deletes the last good runtime
+PASS  failed redeploy reports automatic recovery
+PASS  incomplete bundled volumes fail cleanly when no previous runtime exists
+PASS  missing volume error identifies the exact part
