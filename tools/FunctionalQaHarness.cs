@@ -135,11 +135,35 @@ namespace IrohaAgentDesktop
                 InvokeControlMouse(toolRail, "OnMouseUp", toolBounds[1]);
                 Application.DoEvents();
                 Assert(settingsDrawer.Visible && toolRail.SelectedIndex == 1, "settings tool opens and selects the drawer", results);
+                ComboBox providerBox = GetPrivateField<ComboBox>(form, "drawerProviderBox");
+                ComboBox modelBox = GetPrivateField<ComboBox>(form, "drawerModelBox");
+                TextBox providerKeyBox = GetPrivateField<TextBox>(form, "drawerApiKeyBox");
+                Button modelTab = GetPrivateField<Button>(form, "drawerModelTabButton");
+                Button voiceTab = GetPrivateField<Button>(form, "drawerVoiceTabButton");
+                Assert(providerBox.Visible && modelBox.Visible, "settings exposes provider-first model selection", results);
+                Assert(providerBox.Items.Count >= 15, "mainstream provider catalog is available", results);
+                Assert(!string.IsNullOrWhiteSpace(modelBox.Text), "active provider has a model selection", results);
+
+                string originalProviderId = settings.ProviderId;
+                providerKeyBox.Text = "qa-key-for-" + originalProviderId;
+                SelectProvider(providerBox, "openai");
+                Application.DoEvents();
+                Assert(settings.ProviderId == "openai", "provider selection updates active profile", results);
+                providerKeyBox.Text = "qa-key-for-openai";
+                SelectProvider(providerBox, originalProviderId);
+                Application.DoEvents();
+                Assert(providerKeyBox.Text == "qa-key-for-" + originalProviderId, "provider keys remain isolated", results);
+
+                InvokeControlClick(voiceTab);
+                Application.DoEvents();
                 Button redeployVoice = GetPrivateField<Button>(form, "drawerRedeployVoiceButton");
-                CheckBox optimizePrompt = GetPrivateField<CheckBox>(form, "drawerOptimizeBox");
-                Assert(redeployVoice.Visible && redeployVoice.Text == "重新部署语音", "settings exposes voice redeploy", results);
+                GlassCheckBox optimizePrompt = GetPrivateField<GlassCheckBox>(form, "drawerOptimizeBox");
+                Assert(redeployVoice.Visible && redeployVoice.Text.Contains("重新部署"), "settings exposes voice redeploy", results);
                 Assert(settingsDrawer.ClientRectangle.Contains(redeployVoice.Bounds), "voice redeploy stays inside settings drawer", results);
                 Assert(!redeployVoice.Bounds.IntersectsWith(optimizePrompt.Bounds), "voice redeploy does not overlap prompt optimization", results);
+                InvokeControlClick(modelTab);
+                Application.DoEvents();
+                Assert(providerBox.Visible && !redeployVoice.Visible, "settings pages switch without stacked controls", results);
                 Assert(!settingsDrawer.Bounds.IntersectsWith(toolRail.Bounds), "settings drawer clears the right tool rail", results);
                 GlassPanel voiceDock = GetPrivateField<GlassPanel>(form, "voiceDock");
                 Assert(!settingsDrawer.Bounds.IntersectsWith(voiceDock.Bounds), "settings drawer clears the voice dock", results);
@@ -221,6 +245,20 @@ namespace IrohaAgentDesktop
             MethodInfo method = typeof(Control).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic);
             if (method == null) throw new MissingMethodException(typeof(Control).FullName, "OnClick");
             method.Invoke(control, new object[] { EventArgs.Empty });
+        }
+
+        private static void SelectProvider(ComboBox box, string providerId)
+        {
+            foreach (object item in box.Items)
+            {
+                ModelProviderDefinition provider = item as ModelProviderDefinition;
+                if (provider != null && string.Equals(provider.Id, providerId, StringComparison.OrdinalIgnoreCase))
+                {
+                    box.SelectedItem = provider;
+                    return;
+                }
+            }
+            throw new InvalidOperationException("Provider not found: " + providerId);
         }
 
         private static void InvokeControlMouse(Control control, string methodName, Rectangle bounds)

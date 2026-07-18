@@ -1,0 +1,12 @@
+PASS: settings drawer is visible
+PASS: model page is visible
+PASS: voice controls do not stack under model page
+PASS: full viewport shows memory cards
+PASS: voice redeploy is visible on voice page
+PASS: model controls do not stack under voice page
+PASS: voice redeploy stays inside drawer
+PASS: tool center bundle page is visible
+PASS: tool controls stay inside window
+PASS: tool privacy page is visible
+PASS: privacy lists do not overlap
+PASS: tool skills page is complete

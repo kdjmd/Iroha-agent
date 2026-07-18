@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.3.0 - 2026-07-18
+
+- 实现 A、B、C 三组共 18 个 Tools，以及 10 个可选 Skill 工作方式。
+- 增加统一工具注册表、JSON Schema 参数校验、风险分级、每次确认、35 秒超时、4 轮/每轮 8 次调用上限和 48 KiB 结果上限。
+- 原生适配 OpenAI Responses、OpenAI/DeepSeek Chat、Anthropic Messages、Gemini GenerateContent 和 Cohere v2 Tool Calling。
+- 增加 Brave/Bing 联网搜索、网页正文读取和 SSRF 防护；Brave Key 使用 Windows DPAPI 加密。
+- 增加显式长期记忆写入/遗忘、计算、日期时间、本地提醒与运行中提醒反馈。
+- 增加授权目录文件搜索、TXT/Markdown/CSV/JSON/XML/HTML/DOCX/PDF 读取和本地私人知识库。
+- 增加 Open-Meteo 天气、本地日历与 ICS、只保存不发送的邮件草稿、单次剪贴板、系统媒体键和应用白名单。
+- 增加回形针图片选择与多厂商原生视觉请求；不支持视觉时安全降级为本地元数据和可选 OCR。
+- 增加“工具与隐私”能力中心，统一管理能力组、搜索连接、授权目录、应用白名单和 Skill。
+- 引入 PdfPig .NET Framework 运行时，便携版无需外部 PDF 命令即可读取文字型 PDF。
+- 增加 61 项 Tools/协议/安全回归和能力中心高 DPI 截图验收。
+
+## 2.2.1 - 2026-07-18
+
+- 使用 Windows CurrentUser DPAPI 分厂商保护 API Key，并迁移旧明文设置。
+- 拒绝携带 Key 的远程 HTTP 接口、URL 内嵌凭据并脱敏厂商错误信息。
+- 修复 Cohere 模型发现地址，增加设置页高 DPI 截图回归。
+
+## 2.2.0 - 2026-07-17
+
+- 增加厂商优先的模型设置，为 27 个云端与本地模型入口分别保存模型、地址和 Key。
+- 适配 OpenAI Responses、OpenAI Chat、Anthropic Messages、Gemini、Cohere 和 Azure OpenAI 基础聊天协议。
+- 将“重新部署语音”入口固定放入设置页。
+
 ## 2.1.1 - 2026-07-17
 
 - 修复部分 Windows 同时存在 `Path` / `PATH` 时，旧版 .NET 修改子进程环境导致 GPT-SoVITS 无法启动的问题。

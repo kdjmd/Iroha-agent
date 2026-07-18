@@ -190,10 +190,10 @@ def add_cover(doc):
     p_pr.append(borders)
 
     for label, value in (
-        ("Baseline", "2.1.1"),
+        ("Baseline", "2.3.0"),
         ("Platform", "Windows 10/11 x64"),
         ("Status", "Conditional acceptance"),
-        ("Date", "2026-07-17"),
+        ("Date", "2026-07-18"),
     ):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -242,10 +242,17 @@ def parse_table(lines, start):
     return None, start
 
 
-def table_widths(column_count):
+def table_widths(column_count, rows=None):
     if column_count == 2:
         return [2300, 7060]
     if column_count == 3:
+        headers = rows[0] if rows else []
+        if headers and headers[0] == "文件或目录":
+            return [2500, 3000, 3860]
+        if headers and headers[0] == "优先级":
+            return [1000, 3000, 5360]
+        if headers and headers[0] == "现象":
+            return [1800, 3000, 4560]
         return [1500, 3800, 4060]
     if column_count == 4:
         return [1100, 2500, 1400, 4360]
@@ -261,7 +268,7 @@ def add_table(doc, rows):
     column_count = max(len(row) for row in rows)
     table = doc.add_table(rows=len(rows), cols=column_count)
     table.style = "Table Grid"
-    set_table_geometry(table, table_widths(column_count))
+    set_table_geometry(table, table_widths(column_count, rows))
     for row_index, values in enumerate(rows):
         row = table.rows[row_index]
         if row_index == 0:
@@ -439,9 +446,9 @@ def build(markdown_path: Path, output_path: Path):
 
     core = document.core_properties
     core.title = "彩叶 Iroha Agent Windows 工程验收与交接手册"
-    core.subject = "Iroha Agent 2.1.1 Windows engineering acceptance and handover"
+    core.subject = "Iroha Agent 2.3.0 Windows engineering acceptance and handover"
     core.author = "Iroha Agent Project"
-    core.keywords = "Iroha Agent, Windows, engineering, acceptance, handover, GPT-SoVITS"
+    core.keywords = "Iroha Agent, Windows, engineering, acceptance, handover, GPT-SoVITS, tools, skills"
     core.comments = "Generated from the repository Markdown source."
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

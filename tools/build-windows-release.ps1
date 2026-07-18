@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [string]$Version = "2.1.1",
+  [string]$Version = "2.3.0",
   [string]$OutputRoot = (Join-Path ([Environment]::GetFolderPath("Desktop")) "IrohaAgent-GitHub-Releases"),
   [switch]$FullVoice,
   [string]$RuntimeArchive = $env:IROHA_RUNTIME_ARCHIVE,
@@ -62,8 +62,12 @@ function Write-FirstUseGuide([string]$Directory, [bool]$IncludesVoice) {
     "",
     "1. Extract the complete folder. Do not run the EXE from inside the archive.",
     "2. Run IrohaAgent.exe.",
-    "3. Open Settings and enter your own DeepSeek API key.",
-    "4. The key is stored only in the current Windows user profile and is never included in this release.",
+    "3. Open Settings, choose a provider and model, then enter your own provider API key.",
+    "4. Provider keys are protected with Windows CurrentUser DPAPI and are never included in this release.",
+    "   On another PC or Windows account, enter the provider key again.",
+    "5. Open Tools & Privacy to choose capability bundles, authorized folders, apps, and work styles.",
+    "6. Write, delete, clipboard, image, media, and app actions always ask for confirmation.",
+    "   The app saves email drafts locally but never sends email or runs arbitrary shell commands.",
     "",
     $voiceText,
     "If voice setup fails, open Settings and click Redeploy Voice.",
@@ -83,11 +87,26 @@ function Copy-App([string]$Destination, [bool]$IncludesVoice) {
     }
     Copy-Item -LiteralPath $source -Destination $Destination -Recurse -Force
   }
+  Get-ChildItem -LiteralPath $dist -Filter "*.dll" -File | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $Destination -Force
+  }
+  foreach ($notice in @(
+    @{ Source=(Join-Path $projectRoot "LICENSE"); Name="LICENSE" },
+    @{ Source=(Join-Path $projectRoot "THIRD_PARTY_NOTICES.md"); Name="THIRD_PARTY_NOTICES.md" },
+    @{ Source=(Join-Path $projectRoot "docs\ASSET_NOTICE.md"); Name="ASSET_NOTICE.md" }
+  )) {
+    if (-not (Test-Path -LiteralPath $notice.Source)) { throw "Required release notice is missing: $($notice.Source)" }
+    Copy-Item -LiteralPath $notice.Source -Destination (Join-Path $Destination $notice.Name) -Force
+  }
   Write-FirstUseGuide $Destination $IncludesVoice
-  foreach ($forbidden in @("settings.json", "memory.json", "crash.log", ".env")) {
-    if (Test-Path -LiteralPath (Join-Path $Destination $forbidden)) {
-      throw "Release staging unexpectedly contains user data: $forbidden"
-    }
+  $forbiddenNames = @(
+    "settings.json", "memory.json", "reminders.json", "calendar.json",
+    "email-drafts.json", "knowledge-base.json", "crash.log", ".env"
+  )
+  $forbiddenFiles = Get-ChildItem -LiteralPath $Destination -Recurse -Force -File |
+    Where-Object { $forbiddenNames -contains $_.Name }
+  if ($forbiddenFiles) {
+    throw "Release staging unexpectedly contains user data: $($forbiddenFiles.FullName -join ', ')"
   }
 }
 
@@ -98,6 +117,10 @@ if ($SkipQa) {
 }
 if (-not (Test-Path -LiteralPath (Join-Path $dist "IrohaAgent.exe"))) {
   throw "Windows build did not produce IrohaAgent.exe"
+}
+$builtVersion = (Get-Item -LiteralPath (Join-Path $dist "IrohaAgent.exe")).VersionInfo.ProductVersion
+if ($builtVersion -ne $Version) {
+  throw "Built executable version $builtVersion does not match release version $Version"
 }
 
 New-Item -ItemType Directory -Force -Path $releaseRoot | Out-Null
@@ -158,8 +181,15 @@ try {
     "- FullVoice.7z.001 and later volumes: download all parts and extract the .001 file with 7-Zip.",
     "- Android APK is intentionally not included in this release.",
     "- Release files contain no API key, chat history, memory, or user settings.",
-    "- v2.1.1 fixes cross-PC voice startup, read-only config, Numba cache, safe deployment recovery, and memory persistence.",
-    "- v2.1.1 also fixes repeated ContextMenuStrip disposal error popups in conversation history.",
+    "- v2.3.0 adds 18 permission-controlled Tools and 10 optional Skills in capability bundles A, B, and C.",
+    "- Native tool calling is adapted for OpenAI Responses, OpenAI/DeepSeek Chat, Anthropic, Gemini, and Cohere.",
+    "- Search, memory, reminders, document/PDF reading, local knowledge, weather, calendar, drafts, image analysis, media controls, and app allowlists are included.",
+    "- Writes, deletion, clipboard, images, media keys, and app launches require one-shot confirmation.",
+    "- The release never sends email, runs arbitrary shell commands, or deletes arbitrary files.",
+    "- Provider and Brave Search keys use Windows CurrentUser DPAPI and legacy plaintext settings migrate automatically.",
+    "- Remote HTTP endpoints carrying keys are rejected and provider errors are redacted.",
+    "- Provider API keys, selected models, and custom endpoints are isolated per provider and migrate from legacy DeepSeek settings.",
+    "- Settings now includes a dedicated Redeploy Voice action with progress feedback and source-package protection.",
     "- Confirm redistribution rights before uploading the FullVoice assets."
   ) -join [Environment]::NewLine
   Set-Content -LiteralPath (Join-Path $releaseDirectory "RELEASE_NOTES.txt") -Value $releaseNotes -Encoding UTF8

@@ -2,7 +2,13 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $dist = Join-Path $root "dist"
+$assemblyInfoSource = Join-Path $root "AssemblyInfo.cs"
 $source = Join-Path $root "AgentDesktop.cs"
+$credentialProtectorSource = Join-Path $root "CredentialProtector.cs"
+$modelProvidersSource = Join-Path $root "ModelProviders.cs"
+$agentToolsSource = Join-Path $root "AgentTools.cs"
+$agentToolExecutorsSource = Join-Path $root "AgentToolExecutors.cs"
+$toolCenterSource = Join-Path $root "ToolCenterForm.cs"
 $voiceBootstrapSource = Join-Path $root "VoiceBootstrap.cs"
 $exe = Join-Path $dist "IrohaAgent.exe"
 $projectRoot = Split-Path -Parent $root
@@ -31,20 +37,50 @@ $cscArgs = @(
   "/r:System.Drawing.dll",
   "/r:System.Windows.Forms.dll",
   "/r:System.Net.Http.dll",
+  "/r:System.Security.dll",
   "/r:System.IO.Compression.dll",
   "/r:System.IO.Compression.FileSystem.dll",
   "/r:System.Web.Extensions.dll"
 )
 
+$packageDlls = @(
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.dll"),
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.Core.dll"),
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.DocumentLayoutAnalysis.dll"),
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.Fonts.dll"),
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.Package.dll"),
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.Tokenization.dll"),
+  (Join-Path $root "packages\PdfPig\lib\net462\UglyToad.PdfPig.Tokens.dll"),
+  (Join-Path $root "packages\Microsoft.Bcl.HashCode\lib\net462\Microsoft.Bcl.HashCode.dll"),
+  (Join-Path $root "packages\System.Buffers\lib\net462\System.Buffers.dll"),
+  (Join-Path $root "packages\System.Memory\lib\net462\System.Memory.dll"),
+  (Join-Path $root "packages\System.Numerics.Vectors\lib\net462\System.Numerics.Vectors.dll"),
+  (Join-Path $root "packages\System.Runtime.CompilerServices.Unsafe\lib\net462\System.Runtime.CompilerServices.Unsafe.dll")
+)
+foreach ($packageDll in $packageDlls) {
+  if (-not (Test-Path -LiteralPath $packageDll)) { throw "Required PDF dependency is missing: $packageDll" }
+  $cscArgs += "/r:$packageDll"
+}
+
 if (Test-Path -LiteralPath $icon) {
   $cscArgs += "/win32icon:$icon"
 }
 
+$cscArgs += $assemblyInfoSource
 $cscArgs += $source
+$cscArgs += $credentialProtectorSource
+$cscArgs += $modelProvidersSource
+$cscArgs += $agentToolsSource
+$cscArgs += $agentToolExecutorsSource
+$cscArgs += $toolCenterSource
 $cscArgs += $voiceBootstrapSource
 & $csc @cscArgs
 if ($LASTEXITCODE -ne 0) {
   throw "C# compiler failed with exit code $LASTEXITCODE"
+}
+
+foreach ($packageDll in $packageDlls) {
+  Copy-Item -LiteralPath $packageDll -Destination $dist -Force
 }
 
 $characterSource = Join-Path $projectRoot "assets\character"
