@@ -1,0 +1,122 @@
+PASS: provider catalog covers mainstream vendors
+PASS: provider id is unique: deepseek
+PASS: provider has display name: deepseek
+PASS: provider base URL is absolute: deepseek
+PASS: provider id is unique: openai
+PASS: provider has display name: openai
+PASS: provider base URL is absolute: openai
+PASS: provider id is unique: anthropic
+PASS: provider has display name: anthropic
+PASS: provider base URL is absolute: anthropic
+PASS: provider id is unique: gemini
+PASS: provider has display name: gemini
+PASS: provider base URL is absolute: gemini
+PASS: provider id is unique: xai
+PASS: provider has display name: xai
+PASS: provider base URL is absolute: xai
+PASS: provider id is unique: mistral
+PASS: provider has display name: mistral
+PASS: provider base URL is absolute: mistral
+PASS: provider id is unique: cohere
+PASS: provider has display name: cohere
+PASS: provider base URL is absolute: cohere
+PASS: provider id is unique: openrouter
+PASS: provider has display name: openrouter
+PASS: provider base URL is absolute: openrouter
+PASS: provider id is unique: qwen
+PASS: provider has display name: qwen
+PASS: provider base URL is absolute: qwen
+PASS: provider id is unique: zhipu
+PASS: provider has display name: zhipu
+PASS: provider base URL is absolute: zhipu
+PASS: provider id is unique: siliconflow
+PASS: provider has display name: siliconflow
+PASS: provider base URL is absolute: siliconflow
+PASS: provider id is unique: minimax
+PASS: provider has display name: minimax
+PASS: provider base URL is absolute: minimax
+PASS: provider id is unique: groq
+PASS: provider has display name: groq
+PASS: provider base URL is absolute: groq
+PASS: provider id is unique: together
+PASS: provider has display name: together
+PASS: provider base URL is absolute: together
+PASS: provider id is unique: moonshot
+PASS: provider has display name: moonshot
+PASS: provider base URL is absolute: moonshot
+PASS: provider id is unique: perplexity
+PASS: provider has display name: perplexity
+PASS: provider base URL is absolute: perplexity
+PASS: provider id is unique: nvidia
+PASS: provider has display name: nvidia
+PASS: provider base URL is absolute: nvidia
+PASS: provider id is unique: fireworks
+PASS: provider has display name: fireworks
+PASS: provider base URL is absolute: fireworks
+PASS: provider id is unique: qianfan
+PASS: provider has display name: qianfan
+PASS: provider base URL is absolute: qianfan
+PASS: provider id is unique: hunyuan
+PASS: provider has display name: hunyuan
+PASS: provider base URL is absolute: hunyuan
+PASS: provider id is unique: volcengine
+PASS: provider has display name: volcengine
+PASS: provider base URL is absolute: volcengine
+PASS: provider id is unique: github-models
+PASS: provider has display name: github-models
+PASS: provider base URL is absolute: github-models
+PASS: provider id is unique: huggingface
+PASS: provider has display name: huggingface
+PASS: provider base URL is absolute: huggingface
+PASS: provider id is unique: ollama
+PASS: provider has display name: ollama
+PASS: provider base URL is absolute: ollama
+PASS: provider id is unique: lmstudio
+PASS: provider has display name: lmstudio
+PASS: provider base URL is absolute: lmstudio
+PASS: provider id is unique: azure-openai
+PASS: provider has display name: azure-openai
+PASS: provider id is unique: custom
+PASS: provider has display name: custom
+PASS: provider base URL is absolute: custom
+PASS: legacy DeepSeek settings migrate to provider profile
+PASS: legacy API key survives migration
+PASS: legacy model survives migration
+PASS: legacy JSON migration preserves API key
+PASS: legacy JSON migration creates model profile
+PASS: new provider starts with isolated key
+PASS: switching provider restores its own key
+PASS: provider profiles survive JSON round trip
+PASS: local custom endpoint may omit API key
+PASS: deepseek request URL matches protocol
+PASS: deepseek request uses correct authentication header
+PASS: deepseek request carries selected model
+PASS: deepseek request carries conversation history
+PASS: openai request URL matches protocol
+PASS: openai request uses correct authentication header
+PASS: openai request carries selected model
+PASS: openai request carries conversation history
+PASS: anthropic request URL matches protocol
+PASS: anthropic request uses correct authentication header
+PASS: anthropic request carries selected model
+PASS: anthropic request carries conversation history
+PASS: gemini request URL matches protocol
+PASS: gemini request uses correct authentication header
+PASS: gemini request carries selected model
+PASS: gemini request carries conversation history
+PASS: cohere request URL matches protocol
+PASS: cohere request uses correct authentication header
+PASS: cohere request carries selected model
+PASS: cohere request carries conversation history
+PASS: azure-openai request URL matches protocol
+PASS: azure-openai request uses correct authentication header
+PASS: azure-openai request carries selected model
+PASS: azure-openai request carries conversation history
+PASS: OpenAI-compatible response parses
+PASS: OpenAI Responses output parses
+PASS: Anthropic content blocks parse
+PASS: Gemini candidate parts parse
+PASS: Cohere content blocks parse
+PASS: OpenAI model list parses and sorts
+PASS: Gemini model prefix normalizes
+PASS: custom local request omits blank authorization header

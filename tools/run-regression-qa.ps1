@@ -36,7 +36,13 @@ if (Test-Path -LiteralPath $output) {
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 
 $commonSources = @(
+  (Join-Path $desktopRoot "AssemblyInfo.cs"),
   (Join-Path $desktopRoot "AgentDesktop.cs"),
+  (Join-Path $desktopRoot "CredentialProtector.cs"),
+  (Join-Path $desktopRoot "ModelProviders.cs"),
+  (Join-Path $desktopRoot "AgentTools.cs"),
+  (Join-Path $desktopRoot "AgentToolExecutors.cs"),
+  (Join-Path $desktopRoot "ToolCenterForm.cs"),
   (Join-Path $desktopRoot "VoiceBootstrap.cs")
 )
 $references = @(
@@ -45,10 +51,32 @@ $references = @(
   "System.Drawing.dll",
   "System.Windows.Forms.dll",
   "System.Net.Http.dll",
+  "System.Security.dll",
   "System.IO.Compression.dll",
   "System.IO.Compression.FileSystem.dll",
   "System.Web.Extensions.dll"
 )
+$packageReferences = @(
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.dll"),
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.Core.dll"),
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.DocumentLayoutAnalysis.dll"),
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.Fonts.dll"),
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.Package.dll"),
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.Tokenization.dll"),
+  (Join-Path $desktopRoot "packages\PdfPig\lib\net462\UglyToad.PdfPig.Tokens.dll"),
+  (Join-Path $desktopRoot "packages\Microsoft.Bcl.HashCode\lib\net462\Microsoft.Bcl.HashCode.dll"),
+  (Join-Path $desktopRoot "packages\System.Buffers\lib\net462\System.Buffers.dll"),
+  (Join-Path $desktopRoot "packages\System.Memory\lib\net462\System.Memory.dll"),
+  (Join-Path $desktopRoot "packages\System.Numerics.Vectors\lib\net462\System.Numerics.Vectors.dll"),
+  (Join-Path $desktopRoot "packages\System.Runtime.CompilerServices.Unsafe\lib\net462\System.Runtime.CompilerServices.Unsafe.dll")
+)
+foreach ($packageReference in $packageReferences) {
+  if (-not (Test-Path -LiteralPath $packageReference)) { throw "Required PDF dependency is missing: $packageReference" }
+}
+$references += $packageReferences
+foreach ($packageReference in $packageReferences) {
+  Copy-Item -LiteralPath $packageReference -Destination $output -Force
+}
 
 function Build-Harness([string]$Name, [string]$MainType, [string]$HarnessSource) {
   $exe = Join-Path $output ($Name + ".exe")
@@ -86,6 +114,23 @@ Run-Harness $memoryExe @(
   "--work-root", (Join-Path $output "memory-work")
 )
 
+$modelProviderExe = Build-Harness `
+  "ModelProviderQa" `
+  "IrohaAgentDesktop.ModelProviderQaProgram" `
+  (Join-Path $PSScriptRoot "ModelProviderQaHarness.cs")
+Run-Harness $modelProviderExe @(
+  "--output", (Join-Path $output "model-providers.txt")
+)
+
+$agentToolsExe = Build-Harness `
+  "AgentToolsQa" `
+  "IrohaAgentDesktop.AgentToolsQaProgram" `
+  (Join-Path $PSScriptRoot "AgentToolsQaHarness.cs")
+Run-Harness $agentToolsExe @(
+  "--output", (Join-Path $output "agent-tools.txt"),
+  "--work-root", (Join-Path $output "agent-tools-work")
+)
+
 $voiceExe = Build-Harness `
   "VoiceBootstrapQa" `
   "IrohaAgentDesktop.VoiceBootstrapQaProgram" `
@@ -103,6 +148,21 @@ $functionalExe = Build-Harness `
   (Join-Path $PSScriptRoot "FunctionalQaHarness.cs")
 Copy-Item -LiteralPath (Join-Path $projectRoot "assets") -Destination $output -Recurse -Force
 Run-Harness $functionalExe @("--output", (Join-Path $output "functional.txt"))
+
+$settingsUiExe = Build-Harness `
+  "SettingsUiQa" `
+  "IrohaAgentDesktop.SettingsUiQaProgram" `
+  (Join-Path $PSScriptRoot "SettingsUiQaHarness.cs")
+Run-Harness $settingsUiExe @(
+  "--model-screenshot", (Join-Path $output "settings-model.png"),
+  "--voice-screenshot", (Join-Path $output "settings-voice.png"),
+  "--tool-screenshot", (Join-Path $output "settings-tools.png"),
+  "--tool-privacy-screenshot", (Join-Path $output "settings-tools-privacy.png"),
+  "--tool-skills-screenshot", (Join-Path $output "settings-tools-skills.png"),
+  "--report", (Join-Path $output "settings-ui.txt"),
+  "--width", "1672",
+  "--height", "941"
+)
 
 Write-Host "Regression QA passed: $output"
 Get-ChildItem -LiteralPath $output -Filter "*.txt" -File |
