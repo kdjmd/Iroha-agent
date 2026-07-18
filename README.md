@@ -1,10 +1,27 @@
 # Iroha Agent
 
+[![Version](https://img.shields.io/badge/version-v2.3.0-43c6d7)](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0)
+[![Windows build](https://github.com/kdjmd/Iroha-agent/actions/workflows/windows-build.yml/badge.svg)](https://github.com/kdjmd/Iroha-agent/actions/workflows/windows-build.yml)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-4a90c2)](#windows-构建)
+
 Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，支持多厂商大模型 API、本地 GPT-SoVITS 日语语音、自然逐帧角色动画、长期记忆、提示词压缩、会话管理，以及经过本地权限控制的 Tools 与 Skills。
+
+**当前稳定版：v2.3.0。** [打开下载页](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0) · [查看完整发行说明](docs/RELEASE_NOTES_v2.3.0.md)
 
 > gsv语音模型来自B站up“云游雨散_”大佬的分享，所有角色立绘与背景等图像元素来自于chatgpt图像生成。
 
 ![Iroha Agent Windows 界面](docs/evidence/round-2026-07-16-v21-standard.png)
+
+## v2.3.0 更新内容
+
+- **模型兼容升级**：设置改为“模型厂商 → 模型”二级选择，覆盖 DeepSeek、OpenAI、Claude、Gemini、xAI、Mistral、Cohere、OpenRouter、通义千问、智谱、MiniMax、Kimi、千帆、混元、豆包、Ollama、LM Studio 和自定义 OpenAI 兼容接口。
+- **Tools 与 Skills 正式可用**：新增 18 个权限受控 Tool 和 10 个可选 Skill，支持联网搜索、长期记忆、提醒、文档/PDF、私人知识库、天气、本地日历、邮件草稿、图片理解和受控系统操作。
+- **密钥与接口安全**：不同厂商的 API Key 分开保存，并使用 Windows CurrentUser DPAPI 加密；远程明文 HTTP、私网探测、目录越界和敏感错误回显均被拦截。
+- **语音部署增强**：首次启动自动匹配 GPT-SoVITS，显示部署进度；设置中新增“重新部署语音”，失败时保留旧运行时和原始模型包。
+- **记忆与配置可靠性**：设置、记忆及本地工具数据采用原子写入、备份恢复和损坏文件隔离，旧版 DeepSeek 配置与明文 Key 会安全迁移。
+- **完整验收资料**：Windows 编译、模型协议、设置 UI、长期记忆、语音部署和 61 项 Tools 安全回归均已通过，并由 GitHub Actions 再次验证。
+
+![v2.3.0 Tools 与 Skills 能力中心](docs/evidence/round-2026-07-18-v23-tools-center.png)
 
 ## 当前能力
 
@@ -29,14 +46,16 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 
 ## 下载版本
 
-GitHub Release 提供两个 Windows 版本：
+请从 [Iroha Agent v2.3.0 Release](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0) 下载。GitHub Release 提供两个 Windows 版本：
 
 | 版本 | 内容 | 适用场景 |
 |---|---|---|
-| `Portable.zip` | 应用与高清视觉资源，约 30 MB | 已安装 GPT-SoVITS，或只需要文字聊天 |
-| `FullVoice.7z.001` 等分卷 | 应用、完整 GPT-SoVITS 运行时、彩叶模型与 7-Zip | 新电脑首次安装，希望自动启用语音 |
+| `IrohaAgent-Windows-v2.3.0-Portable.zip` | 应用与高清视觉资源，约 31 MB | 已安装 GPT-SoVITS，或只需要文字聊天 |
+| `IrohaAgent-Windows-v2.3.0-FullVoice.7z.001` 等分卷 | 应用、完整 GPT-SoVITS 运行时、彩叶模型与 7-Zip | 新电脑首次安装，希望自动启用语音 |
 
 FullVoice 需要下载全部分卷，并使用 7-Zip 从 `.001` 解压。首次语音部署需要约 14 GB 安装空间，建议至少预留 20 GB 可用空间。
+
+从 v2.1.x 或 v2.2.x 升级时，先关闭旧程序，再完整解压 v2.3.0 到新目录运行。用户设置和记忆会从 `%LOCALAPPDATA%` 或旧版 `%APPDATA%` 自动读取，无需覆盖旧安装目录；API Key 若来自另一台电脑或 Windows 账户，需要重新填写。
 
 本次仓库和 Release 只提供 Windows 版本，不提供 APK。
 
