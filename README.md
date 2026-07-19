@@ -18,10 +18,13 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 - **Tools 与 Skills 正式可用**：新增 18 个权限受控 Tool 和 10 个可选 Skill，支持联网搜索、长期记忆、提醒、文档/PDF、私人知识库、天气、本地日历、邮件草稿、图片理解和受控系统操作。
 - **密钥与接口安全**：不同厂商的 API Key 分开保存，并使用 Windows CurrentUser DPAPI 加密；远程明文 HTTP、私网探测、目录越界和敏感错误回显均被拦截。
 - **语音部署增强**：首次启动自动匹配 GPT-SoVITS，显示部署进度；设置中新增“重新部署语音”，失败时保留旧运行时和原始模型包。
+- **高 DPI 底部区域修复**：紧凑窗口不再错误隐藏语音波形与引擎状态；试听按钮、波形和 GPT-SoVITS 状态完整对齐，快捷操作移除拥挤的底部二级文字，并与输入区、底栏保持安全间距。
 - **记忆与配置可靠性**：设置、记忆及本地工具数据采用原子写入、备份恢复和损坏文件隔离，旧版 DeepSeek 配置与明文 Key 会安全迁移。
 - **完整验收资料**：Windows 编译、模型协议、设置 UI、长期记忆、语音部署和 61 项 Tools 安全回归均已通过，并由 GitHub Actions 再次验证。
 
 ![v2.3.0 Tools 与 Skills 能力中心](docs/evidence/round-2026-07-18-v23-tools-center.png)
+
+![v2.3.0 紧凑布局语音试听区](docs/evidence/round-2026-07-19-v23-compact-voice-dock.png)
 
 ## 当前能力
 
@@ -138,6 +141,8 @@ voice-pack/    语音集成元数据，不包含权重和音频
 - [V2.3 Tools 回归（61 项）](docs/evidence/round-2026-07-18-v23-agent-tools-qa.txt)
 - [V2.3 设置与能力中心视觉回归](docs/evidence/round-2026-07-18-v23-settings-ui-qa.txt)
 - [V2.3 能力中心截图](docs/evidence/round-2026-07-18-v23-tools-center.png)
+- [V2.3 紧凑布局语音区截图](docs/evidence/round-2026-07-19-v23-compact-voice-dock.png)
+- [V2.3 紧凑布局与设置 UI 回归](docs/evidence/round-2026-07-19-v23-settings-ui-qa.txt)
 - [V2.1 功能回归](docs/evidence/round-2026-07-16-v21-functional-qa.txt)
 - [V2.1 自动部署回归](docs/evidence/round-2026-07-16-v21-bootstrap-qa.txt)
 - [V2.1 完整运行时语音回归](docs/evidence/round-2026-07-16-v21-full-voice-qa.txt)

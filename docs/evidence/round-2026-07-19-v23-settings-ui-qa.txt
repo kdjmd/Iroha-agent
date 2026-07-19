@@ -1,0 +1,23 @@
+PASS: quick action buttons have no clipped secondary captions
+PASS: settings drawer is visible
+PASS: model page is visible
+PASS: voice controls do not stack under model page
+PASS: full viewport shows memory cards
+PASS: voice redeploy is visible on voice page
+PASS: model controls do not stack under voice page
+PASS: voice redeploy stays inside drawer
+PASS: compact viewport keeps a usable voice dock
+PASS: voice play button stays inside compact dock
+PASS: voice caption stays inside compact dock
+PASS: voice divider is aligned in compact dock
+PASS: voice waveform remains visible in compact dock
+PASS: voice engine status remains visible in compact dock
+PASS: voice dock does not overlap the input composer
+PASS: voice dock clears the footer
+PASS: left footer text stays vertically contained
+PASS: right footer text stays vertically contained
+PASS: tool center bundle page is visible
+PASS: tool controls stay inside window
+PASS: tool privacy page is visible
+PASS: privacy lists do not overlap
+PASS: tool skills page is complete

@@ -780,6 +780,7 @@ namespace IrohaAgentDesktop
         private Label inputPlaceholderLabel;
         private Label voiceStateLabel;
         private Label voiceEngineLabel;
+        private Control voiceDockDivider;
         private Label memoryCardBodyLabel;
         private Label compressionCardBodyLabel;
         private Label serviceCardBodyLabel;
@@ -1170,11 +1171,19 @@ namespace IrohaAgentDesktop
             voiceStateLabel.TextAlign = ContentAlignment.MiddleLeft;
             voiceDock.Controls.Add(voiceStateLabel);
 
+            voiceDockDivider = new VoiceDockDividerControl();
+            voiceDockDivider.BackColor = Color.Transparent;
+            voiceDock.Controls.Add(voiceDockDivider);
+
             waveform = new WaveformControl();
             waveform.BackColor = Color.Transparent;
             voiceDock.Controls.Add(waveform);
 
-            voiceEngineLabel = CreateTransparentLabel("GPT-SoVITS · 本地", 7.2F, FontStyle.Regular, Color.FromArgb(92, 128, 154));
+            voiceEngineLabel = new VoiceEngineStatusLabel();
+            voiceEngineLabel.Text = "GPT-SoVITS · 本地";
+            voiceEngineLabel.AutoSize = false;
+            voiceEngineLabel.BackColor = Color.Transparent;
+            voiceEngineLabel.ForeColor = Color.FromArgb(92, 128, 154);
             voiceEngineLabel.TextAlign = ContentAlignment.MiddleLeft;
             voiceDock.Controls.Add(voiceEngineLabel);
 
@@ -1636,18 +1645,30 @@ namespace IrohaAgentDesktop
             int avatarH = h - ScaleY(48, sy);
             avatar.CharacterStageBounds = new Rectangle(avatarX, avatarY, Math.Max(360, avatarW), Math.Max(440, avatarH));
 
-            dialoguePanel.SetBounds(ScaleX(326, sx), ScaleY(568, sy), ScaleX(740, sx), ScaleY(201, sy));
+            int footerHeight = Math.Max(20, ScaleY(27, sy));
+            int footerTop = h - footerHeight;
+            int bottomGap = Math.Max(6, ScaleY(8, sy));
+            int composerHeight = Math.Max(68, ScaleY(80, sy));
+            int composerTop = footerTop - bottomGap - composerHeight;
+            int quickGap = Math.Max(4, ScaleY(5, sy));
+            int quickHeight = Math.Max(44, ScaleY(50, sy));
+            int quickTop = composerTop - quickGap - quickHeight;
+            int dialogueGap = Math.Max(4, ScaleY(6, sy));
+            int dialogueTop = ScaleY(568, sy);
+            int dialogueHeight = Math.Max(148, quickTop - dialogueTop - dialogueGap);
+
+            dialoguePanel.SetBounds(ScaleX(326, sx), dialogueTop, ScaleX(740, sx), dialogueHeight);
             int nameplateWidth = Math.Min(232, Math.Max(204, (int)Math.Round(dialoguePanel.Width * 0.34)));
             dialogueNameLabel.SetBounds(1, 2, Math.Min(nameplateWidth, dialoguePanel.Width - 19), 32);
             dialogueTextBox.SetBounds(42, 44, Math.Max(100, dialoguePanel.Width - 84), Math.Max(58, dialoguePanel.Height - 53));
 
-            quickActionBar.SetBounds(ScaleX(326, sx), ScaleY(769, sy), ScaleX(662, sx), ScaleY(54, sy));
+            quickActionBar.SetBounds(ScaleX(326, sx), quickTop, ScaleX(662, sx), quickHeight);
             LayoutQuickActionButtons();
 
-            inputComposer.SetBounds(ScaleX(326, sx), ScaleY(828, sy), ScaleX(730, sx), ScaleY(90, sy));
+            inputComposer.SetBounds(ScaleX(326, sx), composerTop, ScaleX(730, sx), composerHeight);
             LayoutInputComposer();
 
-            voiceDock.SetBounds(ScaleX(1080, sx), ScaleY(828, sy), ScaleX(458, sx), ScaleY(90, sy));
+            voiceDock.SetBounds(ScaleX(1080, sx), composerTop, ScaleX(458, sx), composerHeight);
             LayoutVoiceDock();
 
             rightToolRail.SetBounds(ScaleX(1544, sx), ScaleY(620, sy), Math.Max(66, ScaleX(92, sx)), ScaleY(258, sy));
@@ -1665,10 +1686,9 @@ namespace IrohaAgentDesktop
                 Math.Max(420, drawerBottom - drawerY));
             LayoutSettingsDrawer();
 
-            int footerHeight = Math.Max(20, ScaleY(27, sy));
-            footerBar.SetBounds(0, h - footerHeight, w, footerHeight);
-            statusLabel.SetBounds(ScaleX(22, sx), h - footerHeight, ScaleX(500, sx), footerHeight);
-            quickHintLabel.SetBounds(ScaleX(520, sx), h - footerHeight, w - ScaleX(580, sx), footerHeight);
+            footerBar.SetBounds(0, footerTop, w, footerHeight);
+            statusLabel.SetBounds(ScaleX(22, sx), footerTop + 1, ScaleX(500, sx), Math.Max(18, footerHeight - 2));
+            quickHintLabel.SetBounds(ScaleX(520, sx), footerTop + 1, w - ScaleX(580, sx), Math.Max(18, footerHeight - 2));
             chatLog.SetBounds(0, 0, 1, 1);
             ApplyVNZOrder();
         }
@@ -1687,7 +1707,10 @@ namespace IrohaAgentDesktop
 
             int contentLeft = leftSidebar.Right + 12;
             int dialogueWidth = Math.Min(490, Math.Max(430, w - contentLeft - 250));
-            int inputTop = h - 88;
+            int footerHeight = 26;
+            int footerTop = h - footerHeight;
+            int inputHeight = 58;
+            int inputTop = footerTop - 6 - inputHeight;
             int quickTop = inputTop - 42;
             int dialogueHeight = 142;
             int dialogueTop = quickTop - dialogueHeight - 6;
@@ -1704,14 +1727,14 @@ namespace IrohaAgentDesktop
             quickActionBar.SetBounds(contentLeft, quickTop, Math.Min(dialogueWidth, 470), 38);
             LayoutQuickActionButtons();
 
-            inputComposer.SetBounds(contentLeft, inputTop, dialogueWidth, 58);
+            inputComposer.SetBounds(contentLeft, inputTop, dialogueWidth, inputHeight);
             LayoutInputComposer();
 
             int railWidth = 62;
             int railX = w - railWidth - 6;
             int voiceX = contentLeft + dialogueWidth + 8;
             int voiceWidth = Math.Max(166, railX - voiceX - 8);
-            voiceDock.SetBounds(voiceX, inputTop, voiceWidth, 58);
+            voiceDock.SetBounds(voiceX, inputTop, voiceWidth, inputHeight);
             LayoutVoiceDock();
 
             rightToolRail.SetBounds(railX, Math.Max(topHeight + 78, dialogueTop - 4), railWidth, 194);
@@ -1728,9 +1751,9 @@ namespace IrohaAgentDesktop
                 Math.Max(380, drawerBottom - drawerY));
             LayoutSettingsDrawer();
 
-            footerBar.SetBounds(0, h - 26, w, 26);
-            statusLabel.SetBounds(14, h - 25, Math.Min(340, w / 2), 22);
-            quickHintLabel.SetBounds(Math.Min(350, w / 2 - 20), h - 25, Math.Max(240, w - 370), 22);
+            footerBar.SetBounds(0, footerTop, w, footerHeight);
+            statusLabel.SetBounds(14, footerTop + 1, Math.Min(340, w / 2), footerHeight - 2);
+            quickHintLabel.SetBounds(Math.Min(350, w / 2 - 20), footerTop + 1, Math.Max(240, w - 370), footerHeight - 2);
             chatLog.SetBounds(0, 0, 1, 1);
             ApplyVNZOrder();
         }
@@ -1997,22 +2020,68 @@ namespace IrohaAgentDesktop
 
         private void LayoutVoiceDock()
         {
-            if (voiceDock == null) return;
-            bool compact = voiceDock.Width < 300 || voiceDock.Height < 64;
-            int playSize = Math.Max(48, Math.Min(56, voiceDock.Height - 22));
-            testVoiceButton.SetBounds(18, Math.Max(10, (voiceDock.Height - playSize) / 2), playSize, playSize);
+            if (voiceDock == null || testVoiceButton == null || voiceStateLabel == null || waveform == null) return;
+
+            bool lowHeight = voiceDock.Height < 72;
+            int horizontalPadding = lowHeight ? 14 : 18;
+            int verticalPadding = lowHeight ? 8 : 12;
+            int playLimit = lowHeight ? 42 : 54;
+            int playSize = Math.Max(36, Math.Min(playLimit, voiceDock.Height - verticalPadding * 2));
+            int playY = Math.Max(6, (voiceDock.Height - playSize) / 2);
+            testVoiceButton.SetBounds(horizontalPadding, playY, playSize, playSize);
             ApplyCircularRegion(testVoiceButton);
-            voiceStateLabel.SetBounds(playSize + 32, Math.Max(8, (voiceDock.Height - 42) / 2), compact ? Math.Max(76, voiceDock.Width - playSize - 44) : 104, 42);
-            waveform.Visible = !compact;
-            if (voiceEngineLabel != null) voiceEngineLabel.Visible = !compact;
-            if (compact) return;
-            int waveX = playSize + 148;
-            int waveWidth = Math.Max(96, voiceDock.Width - playSize - 172);
-            waveform.SetBounds(waveX, 12, waveWidth, 22);
+
+            int stateX = testVoiceButton.Right + (lowHeight ? 12 : 14);
+            int stateWidth = lowHeight ? 108 : 116;
+            int stateHeight = Math.Min(42, Math.Max(36, voiceDock.Height - 12));
+            int stateY = Math.Max(5, (voiceDock.Height - stateHeight) / 2);
+            int dividerX = stateX + stateWidth + (lowHeight ? 8 : 12);
+            int waveX = dividerX + 12;
+            int rightPadding = lowHeight ? 14 : 18;
+            int waveWidth = voiceDock.Width - waveX - rightPadding;
+            bool showTelemetry = voiceDock.Width >= 320 && waveWidth >= 92;
+
+            if (!showTelemetry)
+            {
+                stateWidth = Math.Max(72, voiceDock.Width - stateX - rightPadding);
+            }
+            voiceStateLabel.SetBounds(stateX, stateY, stateWidth, stateHeight);
+
+            if (voiceDockDivider != null)
+            {
+                voiceDockDivider.Visible = showTelemetry;
+                if (showTelemetry)
+                {
+                    int dividerHeight = Math.Min(34, Math.Max(24, voiceDock.Height - 22));
+                    voiceDockDivider.SetBounds(dividerX, (voiceDock.Height - dividerHeight) / 2, 2, dividerHeight);
+                }
+            }
+
+            waveform.Visible = showTelemetry;
+            if (voiceEngineLabel != null) voiceEngineLabel.Visible = showTelemetry;
+            int waveformTop = 0;
+            int waveformHeight = 0;
+            if (showTelemetry)
+            {
+                waveformHeight = lowHeight ? 18 : 22;
+                int telemetryHeight = waveformHeight + 3 + (lowHeight ? 18 : 20);
+                waveformTop = Math.Max(7, (voiceDock.Height - telemetryHeight) / 2);
+                waveform.SetBounds(waveX, waveformTop, waveWidth, waveformHeight);
+            }
             if (voiceEngineLabel != null)
             {
-                voiceEngineLabel.SetBounds(waveX, 37, waveWidth, 20);
+                if (showTelemetry)
+                {
+                    int engineTop = waveformTop + waveformHeight + 3;
+                    voiceEngineLabel.SetBounds(waveX, engineTop, waveWidth, lowHeight ? 18 : 20);
+                }
             }
+
+            testVoiceButton.BringToFront();
+            voiceStateLabel.BringToFront();
+            if (voiceDockDivider != null && voiceDockDivider.Visible) voiceDockDivider.BringToFront();
+            if (waveform.Visible) waveform.BringToFront();
+            if (voiceEngineLabel != null && voiceEngineLabel.Visible) voiceEngineLabel.BringToFront();
         }
 
         private void ApplyCircularRegion(Control control)
@@ -2771,7 +2840,6 @@ namespace IrohaAgentDesktop
             if (glass != null)
             {
                 glass.OpaqueBackfill = false;
-                glass.SecondaryText = GetQuickActionSecondaryText(iconKind);
                 glass.Radius = 14;
             }
             button.Tag = prompt;
@@ -2781,15 +2849,6 @@ namespace IrohaAgentDesktop
             button.Click += QuickActionButton_Click;
             quickActionButtons.Add(button);
             panel.Controls.Add(button);
-        }
-
-        private static string GetQuickActionSecondaryText(string iconKind)
-        {
-            if (string.Equals(iconKind, "chat", StringComparison.OrdinalIgnoreCase)) return "随便聊聊吧";
-            if (string.Equals(iconKind, "plan", StringComparison.OrdinalIgnoreCase)) return "制定轻量计划";
-            if (string.Equals(iconKind, "idea", StringComparison.OrdinalIgnoreCase)) return "头脑风暴一下";
-            if (string.Equals(iconKind, "review", StringComparison.OrdinalIgnoreCase)) return "回顾与成长";
-            return "";
         }
 
         private void QuickActionButton_Click(object sender, EventArgs e)
@@ -5413,6 +5472,83 @@ namespace IrohaAgentDesktop
         {
             EventHandler handler = index == 0 ? MemoryClicked : (index == 1 ? SettingsClicked : AppearanceClicked);
             if (handler != null) handler(this, EventArgs.Empty);
+        }
+    }
+
+    internal sealed class VoiceDockDividerControl : Control
+    {
+        public VoiceDockDividerControl()
+        {
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            if (Width <= 0 || Height <= 2) return;
+            Rectangle rect = new Rectangle(0, 1, Width, Height - 2);
+            using (var brush = new LinearGradientBrush(rect, Color.Transparent, Color.Transparent, 90F))
+            {
+                brush.InterpolationColors = new ColorBlend
+                {
+                    Colors = new[]
+                    {
+                        Color.FromArgb(0, 93, 188, 208),
+                        Color.FromArgb(92, 93, 188, 208),
+                        Color.FromArgb(0, 93, 188, 208)
+                    },
+                    Positions = new[] { 0F, 0.5F, 1F }
+                };
+                e.Graphics.FillRectangle(brush, rect);
+            }
+        }
+    }
+
+    internal sealed class VoiceEngineStatusLabel : Label
+    {
+        public VoiceEngineStatusLabel()
+        {
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
+            Font = new Font("Microsoft YaHei UI", 7.4F, FontStyle.Regular);
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs pevent)
+        {
+            Color backfill = Color.FromArgb(255, 250, 254, 255);
+            var glassParent = Parent as GlassPanel;
+            if (glassParent != null) backfill = glassParent.FillColor;
+            using (var brush = new SolidBrush(backfill))
+            {
+                pevent.Graphics.FillRectangle(brush, ClientRectangle);
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Color backfill = Color.FromArgb(255, 250, 254, 255);
+            var glassParent = Parent as GlassPanel;
+            if (glassParent != null) backfill = glassParent.FillColor;
+            using (var clearBrush = new SolidBrush(backfill))
+            {
+                e.Graphics.FillRectangle(clearBrush, ClientRectangle);
+            }
+
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            int dotY = Math.Max(1, (Height - 6) / 2);
+            using (var halo = new SolidBrush(Color.FromArgb(42, 74, 196, 214)))
+            using (var dot = new SolidBrush(Color.FromArgb(214, 74, 196, 214)))
+            {
+                e.Graphics.FillEllipse(halo, 0, dotY - 2, 10, 10);
+                e.Graphics.FillEllipse(dot, 2, dotY, 6, 6);
+            }
+            TextRenderer.DrawText(
+                e.Graphics,
+                Text ?? "",
+                Font,
+                new Rectangle(14, 0, Math.Max(1, Width - 14), Height),
+                ForeColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
     }
 

@@ -44,15 +44,16 @@ namespace IrohaAgentDesktop
             catch { }
             string modelShot = GetArgument(args, "--model-screenshot");
             string voiceShot = GetArgument(args, "--voice-screenshot");
+            string compactShot = GetArgument(args, "--compact-screenshot");
             string toolShot = GetArgument(args, "--tool-screenshot");
             string toolPrivacyShot = GetArgument(args, "--tool-privacy-screenshot");
             string toolSkillsShot = GetArgument(args, "--tool-skills-screenshot");
             string report = GetArgument(args, "--report");
             int viewportWidth = GetIntArgument(args, "--width", 1280);
             int viewportHeight = GetIntArgument(args, "--height", 720);
-            if (string.IsNullOrWhiteSpace(modelShot) || string.IsNullOrWhiteSpace(voiceShot) || string.IsNullOrWhiteSpace(toolShot) || string.IsNullOrWhiteSpace(toolPrivacyShot) || string.IsNullOrWhiteSpace(toolSkillsShot) || string.IsNullOrWhiteSpace(report))
+            if (string.IsNullOrWhiteSpace(modelShot) || string.IsNullOrWhiteSpace(voiceShot) || string.IsNullOrWhiteSpace(compactShot) || string.IsNullOrWhiteSpace(toolShot) || string.IsNullOrWhiteSpace(toolPrivacyShot) || string.IsNullOrWhiteSpace(toolSkillsShot) || string.IsNullOrWhiteSpace(report))
             {
-                throw new ArgumentException("--model-screenshot, --voice-screenshot, --tool-screenshot and --report are required");
+                throw new ArgumentException("--model-screenshot, --voice-screenshot, --compact-screenshot, --tool-screenshot and --report are required");
             }
 
             var results = new List<string>();
@@ -72,6 +73,19 @@ namespace IrohaAgentDesktop
                 form.Size = new Size(viewportWidth, viewportHeight);
                 form.Show();
                 Application.DoEvents();
+
+                List<Button> quickActions = GetPrivateField<List<Button>>(form, "quickActionButtons");
+                bool quickActionsHaveCleanCaptions = true;
+                foreach (Button quickAction in quickActions)
+                {
+                    var glassQuickAction = quickAction as GlassButton;
+                    if (glassQuickAction != null && !string.IsNullOrWhiteSpace(glassQuickAction.SecondaryText))
+                    {
+                        quickActionsHaveCleanCaptions = false;
+                        break;
+                    }
+                }
+                Assert(quickActionsHaveCleanCaptions, "quick action buttons have no clipped secondary captions", results);
 
                 InvokePrivateMethod(form, "ToggleSettingsDrawer");
                 WaitForPaint();
@@ -95,6 +109,31 @@ namespace IrohaAgentDesktop
                 Assert(!providers.Visible && !models.Visible, "model controls do not stack under voice page", results);
                 Assert(drawer.ClientRectangle.Contains(redeploy.Bounds), "voice redeploy stays inside drawer", results);
                 Capture(form, voiceShot);
+
+                InvokePrivateMethod(form, "HideSettingsDrawer");
+                form.Size = new Size(1280, 720);
+                WaitForPaint();
+                GlassPanel voiceDock = GetPrivateField<GlassPanel>(form, "voiceDock");
+                GlassPanel inputComposer = GetPrivateField<GlassPanel>(form, "inputComposer");
+                FooterBarControl footerBar = GetPrivateField<FooterBarControl>(form, "footerBar");
+                Button testVoice = GetPrivateField<Button>(form, "testVoiceButton");
+                Label voiceState = GetPrivateField<Label>(form, "voiceStateLabel");
+                Control voiceDivider = GetPrivateField<Control>(form, "voiceDockDivider");
+                WaveformControl waveform = GetPrivateField<WaveformControl>(form, "waveform");
+                Label voiceEngine = GetPrivateField<Label>(form, "voiceEngineLabel");
+                Label status = GetPrivateField<Label>(form, "statusLabel");
+                Label quickHint = GetPrivateField<Label>(form, "quickHintLabel");
+                Assert(voiceDock.Visible && voiceDock.Width >= 320, "compact viewport keeps a usable voice dock", results);
+                Assert(testVoice.Visible && voiceDock.ClientRectangle.Contains(testVoice.Bounds), "voice play button stays inside compact dock", results);
+                Assert(voiceState.Visible && voiceDock.ClientRectangle.Contains(voiceState.Bounds), "voice caption stays inside compact dock", results);
+                Assert(voiceDivider.Visible && voiceDock.ClientRectangle.Contains(voiceDivider.Bounds), "voice divider is aligned in compact dock", results);
+                Assert(waveform.Visible && waveform.Width >= 92 && voiceDock.ClientRectangle.Contains(waveform.Bounds), "voice waveform remains visible in compact dock", results);
+                Assert(voiceEngine.Visible && voiceDock.ClientRectangle.Contains(voiceEngine.Bounds), "voice engine status remains visible in compact dock", results);
+                Assert(!voiceDock.Bounds.IntersectsWith(inputComposer.Bounds), "voice dock does not overlap the input composer", results);
+                Assert(!voiceDock.Bounds.IntersectsWith(footerBar.Bounds), "voice dock clears the footer", results);
+                Assert(status.Top >= footerBar.Top && status.Bottom <= footerBar.Bottom, "left footer text stays vertically contained", results);
+                Assert(quickHint.Top >= footerBar.Top && quickHint.Bottom <= footerBar.Bottom, "right footer text stays vertically contained", results);
+                Capture(form, compactShot);
                 form.Close();
             }
 

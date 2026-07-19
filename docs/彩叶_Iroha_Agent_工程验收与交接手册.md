@@ -267,6 +267,7 @@ cd desktop
 | T-05 | 提醒、日历和本地写操作确认 | 通过 | v2.3 Agent Tools QA |
 | T-06 | OpenAI、Anthropic、Gemini、Cohere 与兼容接口图片载荷 | 通过 | v2.3 Agent Tools QA |
 | U-01 | 能力中心三页高 DPI 无重叠 | 通过 | v2.3 Settings UI QA |
+| U-02 | 紧凑布局语音 Dock 子控件完整可见且不与输入区、底栏相交 | 通过 | 2026-07-19 Settings UI QA 与截图 |
 | P-01 | Portable ZIP 与哈希 | 通过 | 发布脚本 QA |
 | P-02 | FullVoice 五分卷与哈希 | 通过 | 发布脚本 QA |
 
@@ -342,6 +343,7 @@ docs/evidence/round-2026-07-18-v23-tools-skills.png
 - 新功能优先进入设置浮窗或独立页面，避免遮挡角色和对白框。
 - 图标必须与真实功能一一对应。
 - 所有新增控件必须验证 1280×720 与 980×552。
+- 语音 Dock 的遥测信息应按可用宽度降级，不得仅因高 DPI 下控件高度变小而隐藏波形和引擎状态。
 
 ### 13.2 语音
 

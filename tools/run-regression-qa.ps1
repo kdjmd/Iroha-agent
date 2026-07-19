@@ -156,6 +156,7 @@ $settingsUiExe = Build-Harness `
 Run-Harness $settingsUiExe @(
   "--model-screenshot", (Join-Path $output "settings-model.png"),
   "--voice-screenshot", (Join-Path $output "settings-voice.png"),
+  "--compact-screenshot", (Join-Path $output "settings-compact-main.png"),
   "--tool-screenshot", (Join-Path $output "settings-tools.png"),
   "--tool-privacy-screenshot", (Join-Path $output "settings-tools-privacy.png"),
   "--tool-skills-screenshot", (Join-Path $output "settings-tools-skills.png"),
