@@ -8,6 +8,8 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 
 **当前稳定版：v2.3.0。** [打开下载页](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0) · [查看完整发行说明](docs/RELEASE_NOTES_v2.3.0.md)
 
+工程交接与本地归档入口：[工程归档索引](docs/PROJECT_ARCHIVE_INDEX.md)
+
 > gsv语音模型来自B站up“云游雨散_”大佬的分享，所有角色立绘与背景等图像元素来自于chatgpt图像生成。
 
 ![Iroha Agent Windows 界面](docs/evidence/round-2026-07-16-v21-standard.png)
