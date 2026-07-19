@@ -154,9 +154,11 @@ $settingsUiExe = Build-Harness `
   "IrohaAgentDesktop.SettingsUiQaProgram" `
   (Join-Path $PSScriptRoot "SettingsUiQaHarness.cs")
 Run-Harness $settingsUiExe @(
+  "--main-screenshot", (Join-Path $output "settings-main.png"),
   "--model-screenshot", (Join-Path $output "settings-model.png"),
   "--voice-screenshot", (Join-Path $output "settings-voice.png"),
   "--compact-screenshot", (Join-Path $output "settings-compact-main.png"),
+  "--narrow-screenshot", (Join-Path $output "settings-narrow-main.png"),
   "--tool-screenshot", (Join-Path $output "settings-tools.png"),
   "--tool-privacy-screenshot", (Join-Path $output "settings-tools-privacy.png"),
   "--tool-skills-screenshot", (Join-Path $output "settings-tools-skills.png"),

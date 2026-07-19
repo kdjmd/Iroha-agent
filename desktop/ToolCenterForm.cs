@@ -12,6 +12,7 @@ namespace IrohaAgentDesktop
 {
     internal sealed class ToolCenterForm : Form
     {
+        private static readonly Color ContentSurfaceColor = Color.FromArgb(238, 249, 253);
         private readonly Panel navigation = new Panel();
         private readonly Panel content = new Panel();
         private readonly Label pageTitle = new Label();
@@ -42,7 +43,7 @@ namespace IrohaAgentDesktop
             MinimumSize = new Size(820, 580);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.None;
-            BackColor = Color.FromArgb(238, 249, 253);
+            BackColor = ContentSurfaceColor;
             Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Regular);
             DoubleBuffered = true;
             BuildLayout();
@@ -74,7 +75,7 @@ namespace IrohaAgentDesktop
 
             navigation.BackColor = Color.FromArgb(246, 252, 255);
             Controls.Add(navigation);
-            content.BackColor = Color.Transparent;
+            content.BackColor = ContentSurfaceColor;
             Controls.Add(content);
 
             string[] tabNames = { "能力组合", "权限与连接", "工作方式" };
@@ -86,7 +87,7 @@ namespace IrohaAgentDesktop
                 tabs[i].Padding = new Padding(18, 0, 0, 0);
                 tabs[i].Click += delegate { ShowPage(index); };
                 navigation.Controls.Add(tabs[i]);
-                pages[i] = new Panel { BackColor = Color.Transparent, Visible = i == 0 };
+                pages[i] = new Panel { BackColor = ContentSurfaceColor, Visible = i == 0 };
                 content.Controls.Add(pages[i]);
             }
 
@@ -306,7 +307,7 @@ namespace IrohaAgentDesktop
 
         private static CheckBox MakeCheckBox(string title, string description, bool value)
         {
-            return new ToolBundleToggle { Title = title, Description = description, Checked = value, BackColor = Color.Transparent, ForeColor = Theme.TextMain, Cursor = Cursors.Hand };
+            return new ToolBundleToggle { Title = title, Description = description, Checked = value, BackColor = ContentSurfaceColor, ForeColor = Theme.TextMain, Cursor = Cursors.Hand };
         }
 
         private static ListBox MakeListBox()
@@ -340,20 +341,24 @@ namespace IrohaAgentDesktop
 
         public ToolBundleToggle()
         {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Opaque, true);
             Appearance = Appearance.Normal;
             FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            UseVisualStyleBackColor = false;
             TabStop = true;
         }
 
         protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { hover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            Color parentColor = Parent == null ? Color.FromArgb(238, 249, 253) : Parent.BackColor;
+            Color parentColor = BackColor.A == 255 ? BackColor : Color.FromArgb(238, 249, 253);
             using (var clear = new SolidBrush(parentColor)) g.FillRectangle(clear, ClientRectangle);
             Rectangle card = new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3));
             Color top = Checked ? Color.FromArgb(238, 253, 255) : Color.FromArgb(252, 255, 255);
@@ -379,7 +384,13 @@ namespace IrohaAgentDesktop
                 TextRenderer.DrawText(g, Title ?? "", titleFont, new Rectangle(card.X + 18, card.Y + 9, textWidth, 25), Theme.TextMain, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
                 TextRenderer.DrawText(g, Description ?? "", descriptionFont, new Rectangle(card.X + 18, card.Y + 32, textWidth, Math.Max(18, card.Height - 36)), Theme.TextSub, TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
             }
-            if (Focused) ControlPaint.DrawFocusRectangle(g, Rectangle.Inflate(card, -4, -4));
+            if (Focused && Enabled)
+            {
+                using (var focusPen = new Pen(Color.FromArgb(150, 78, 194, 214), 1.4F))
+                {
+                    g.DrawRoundedRectangle(focusPen, Rectangle.Inflate(card, -3, -3), 10);
+                }
+            }
         }
     }
 

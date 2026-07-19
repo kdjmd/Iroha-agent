@@ -244,7 +244,7 @@ def parse_table(lines, start):
 
 def table_widths(column_count, rows=None):
     if column_count == 2:
-        return [2300, 7060]
+        return [3000, 6360]
     if column_count == 3:
         headers = rows[0] if rows else []
         if headers and headers[0] == "文件或目录":
@@ -315,9 +315,10 @@ def add_callout(doc, text):
     paragraph = doc.add_paragraph()
     paragraph.paragraph_format.left_indent = Inches(0.16)
     paragraph.paragraph_format.right_indent = Inches(0.08)
-    paragraph.paragraph_format.space_before = Pt(5)
-    paragraph.paragraph_format.space_after = Pt(9)
-    paragraph.paragraph_format.line_spacing = 1.2
+    paragraph.paragraph_format.space_before = Pt(2)
+    paragraph.paragraph_format.space_after = Pt(2)
+    paragraph.paragraph_format.line_spacing = 1.08
+    paragraph.paragraph_format.keep_together = True
     p_pr = paragraph._p.get_or_add_pPr()
     shading = OxmlElement("w:shd")
     shading.set(qn("w:fill"), LIGHTER_BLUE)
@@ -329,7 +330,7 @@ def add_callout(doc, text):
     left.set(qn("w:color"), BLUE)
     borders.append(left)
     p_pr.append(borders)
-    add_inline_markdown(paragraph, text, base_size=10.5, color=INK)
+    add_inline_markdown(paragraph, text, base_size=9.5, color=INK)
 
 
 def build(markdown_path: Path, output_path: Path):
@@ -382,6 +383,11 @@ def build(markdown_path: Path, output_path: Path):
         stripped = line.strip()
         if not stripped:
             flush_paragraph()
+            index += 1
+            continue
+        if stripped == "<!-- pagebreak -->":
+            flush_paragraph()
+            document.add_page_break()
             index += 1
             continue
         if stripped.startswith("```"):

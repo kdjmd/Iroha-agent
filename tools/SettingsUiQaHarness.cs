@@ -44,16 +44,18 @@ namespace IrohaAgentDesktop
             catch { }
             string modelShot = GetArgument(args, "--model-screenshot");
             string voiceShot = GetArgument(args, "--voice-screenshot");
+            string mainShot = GetArgument(args, "--main-screenshot");
             string compactShot = GetArgument(args, "--compact-screenshot");
+            string narrowShot = GetArgument(args, "--narrow-screenshot");
             string toolShot = GetArgument(args, "--tool-screenshot");
             string toolPrivacyShot = GetArgument(args, "--tool-privacy-screenshot");
             string toolSkillsShot = GetArgument(args, "--tool-skills-screenshot");
             string report = GetArgument(args, "--report");
             int viewportWidth = GetIntArgument(args, "--width", 1280);
             int viewportHeight = GetIntArgument(args, "--height", 720);
-            if (string.IsNullOrWhiteSpace(modelShot) || string.IsNullOrWhiteSpace(voiceShot) || string.IsNullOrWhiteSpace(compactShot) || string.IsNullOrWhiteSpace(toolShot) || string.IsNullOrWhiteSpace(toolPrivacyShot) || string.IsNullOrWhiteSpace(toolSkillsShot) || string.IsNullOrWhiteSpace(report))
+            if (string.IsNullOrWhiteSpace(modelShot) || string.IsNullOrWhiteSpace(voiceShot) || string.IsNullOrWhiteSpace(mainShot) || string.IsNullOrWhiteSpace(compactShot) || string.IsNullOrWhiteSpace(narrowShot) || string.IsNullOrWhiteSpace(toolShot) || string.IsNullOrWhiteSpace(toolPrivacyShot) || string.IsNullOrWhiteSpace(toolSkillsShot) || string.IsNullOrWhiteSpace(report))
             {
-                throw new ArgumentException("--model-screenshot, --voice-screenshot, --compact-screenshot, --tool-screenshot and --report are required");
+                throw new ArgumentException("main, settings, compact, narrow, tool screenshots and --report are required");
             }
 
             var results = new List<string>();
@@ -86,6 +88,8 @@ namespace IrohaAgentDesktop
                     }
                 }
                 Assert(quickActionsHaveCleanCaptions, "quick action buttons have no clipped secondary captions", results);
+                AssertBottomLayout(form, results, "full viewport", true);
+                Capture(form, mainShot);
 
                 InvokePrivateMethod(form, "ToggleSettingsDrawer");
                 WaitForPaint();
@@ -133,7 +137,31 @@ namespace IrohaAgentDesktop
                 Assert(!voiceDock.Bounds.IntersectsWith(footerBar.Bounds), "voice dock clears the footer", results);
                 Assert(status.Top >= footerBar.Top && status.Bottom <= footerBar.Bottom, "left footer text stays vertically contained", results);
                 Assert(quickHint.Top >= footerBar.Top && quickHint.Bottom <= footerBar.Bottom, "right footer text stays vertically contained", results);
+                AssertBottomLayout(form, results, "compact viewport", true);
                 Capture(form, compactShot);
+
+                form.Size = new Size(980, 552);
+                WaitForPaint();
+                AssertBottomLayout(form, results, "minimum viewport", false);
+                Capture(form, narrowShot);
+
+                Size[] layoutMatrix =
+                {
+                    new Size(1024, 576),
+                    new Size(1088, 612),
+                    new Size(1100, 620),
+                    new Size(1280, 720),
+                    new Size(1366, 768),
+                    new Size(1450, 816),
+                    new Size(1672, 941),
+                    new Size(1920, 1080)
+                };
+                foreach (Size layoutSize in layoutMatrix)
+                {
+                    form.Size = layoutSize;
+                    WaitForPaint();
+                    AssertBottomLayout(form, results, layoutSize.Width + "x" + layoutSize.Height, null);
+                }
                 form.Close();
             }
 
@@ -148,6 +176,10 @@ namespace IrohaAgentDesktop
                 CheckBox bundleC = GetPrivateField<CheckBox>(toolForm, "bundleCBox");
                 Assert(toolsEnabled.Visible && bundleC.Visible, "tool center bundle page is visible", results);
                 Assert(toolForm.ClientRectangle.Contains(toolsEnabled.Bounds), "tool controls stay inside window", results);
+                Assert(toolsEnabled.BackColor.A == 255 && bundleC.BackColor.A == 255, "tool cards use an opaque compositing surface", results);
+                toolsEnabled.Focus();
+                WaitForPaint();
+                Assert(!HasNearBlackPerimeter(toolsEnabled) && !HasNearBlackPerimeter(bundleC), "tool cards have no black frame or focus rectangle", results);
                 CapturePlain(toolForm, toolShot);
                 Button[] tabs = GetPrivateField<Button[]>(toolForm, "tabs");
                 InvokeControlClick(tabs[1]);
@@ -206,6 +238,75 @@ namespace IrohaAgentDesktop
                 Application.DoEvents();
                 form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.Size));
                 bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            }
+        }
+
+        private static void AssertBottomLayout(MainForm form, IList<string> results, string label, bool? expectTelemetry)
+        {
+            GlassPanel quickBar = GetPrivateField<GlassPanel>(form, "quickActionBar");
+            List<Button> quickActions = GetPrivateField<List<Button>>(form, "quickActionButtons");
+            Assert(quickBar.Visible && quickActions.Count == 4, label + " keeps all quick actions visible", results);
+            for (int i = 0; i < quickActions.Count; i++)
+            {
+                Button action = quickActions[i];
+                GlassButton glass = action as GlassButton;
+                Assert(quickBar.ClientRectangle.Contains(action.Bounds), label + " contains quick action " + (i + 1), results);
+                Assert(glass != null && action.BackColor.A == 0 && !glass.OpaqueBackfill, label + " quick action " + (i + 1) + " has no rectangular backfill", results);
+                if (i > 0)
+                {
+                    Assert(!quickActions[i - 1].Bounds.IntersectsWith(action.Bounds) && action.Left - quickActions[i - 1].Right >= 6, label + " separates quick actions " + i + " and " + (i + 1), results);
+                }
+            }
+
+            GlassPanel composer = GetPrivateField<GlassPanel>(form, "inputComposer");
+            TextBox input = GetPrivateField<TextBox>(form, "inputBox");
+            Button attach = GetPrivateField<Button>(form, "attachImageButton");
+            Button send = GetPrivateField<Button>(form, "sendButton");
+            Assert(composer.ClientRectangle.Contains(input.Bounds) && composer.ClientRectangle.Contains(attach.Bounds) && composer.ClientRectangle.Contains(send.Bounds), label + " contains every composer control", results);
+            Assert(!attach.Bounds.IntersectsWith(send.Bounds) && send.Left - attach.Right >= 8, label + " separates attachment and send controls", results);
+            Assert(input.Right + 8 <= attach.Left, label + " keeps input text clear of composer actions", results);
+            Assert(attach.BackColor.A == 0 && send.BackColor.A == 0, label + " composer actions have no opaque square backfill", results);
+
+            GlassPanel dock = GetPrivateField<GlassPanel>(form, "voiceDock");
+            Button play = GetPrivateField<Button>(form, "testVoiceButton");
+            Label state = GetPrivateField<Label>(form, "voiceStateLabel");
+            Control divider = GetPrivateField<Control>(form, "voiceDockDivider");
+            WaveformControl wave = GetPrivateField<WaveformControl>(form, "waveform");
+            Label engine = GetPrivateField<Label>(form, "voiceEngineLabel");
+            Assert(dock.ClientRectangle.Contains(play.Bounds) && dock.ClientRectangle.Contains(state.Bounds), label + " contains voice play and caption controls", results);
+            Assert(!play.Bounds.IntersectsWith(state.Bounds), label + " separates voice play and caption controls", results);
+            bool telemetryVisible = wave.Visible && divider.Visible && engine.Visible;
+            Assert(wave.Visible == divider.Visible && wave.Visible == engine.Visible, label + " keeps voice telemetry controls in one mode", results);
+            if (expectTelemetry.HasValue)
+            {
+                Assert(telemetryVisible == expectTelemetry.Value, label + " uses the expected telemetry mode", results);
+            }
+            if (telemetryVisible)
+            {
+                Assert(dock.ClientRectangle.Contains(divider.Bounds) && dock.ClientRectangle.Contains(wave.Bounds) && dock.ClientRectangle.Contains(engine.Bounds), label + " contains voice telemetry", results);
+                Assert(state.Right + 8 <= divider.Left && divider.Right + 8 <= wave.Left, label + " separates caption, divider and waveform", results);
+                Assert(!state.Bounds.IntersectsWith(wave.Bounds) && !wave.Bounds.IntersectsWith(engine.Bounds) && wave.Bottom + 2 <= engine.Top, label + " prevents voice text and waveform overlap", results);
+            }
+        }
+
+        private static bool HasNearBlackPerimeter(Control control)
+        {
+            if (control == null || control.Width <= 0 || control.Height <= 0) return true;
+            using (var bitmap = new Bitmap(control.Width, control.Height))
+            {
+                control.DrawToBitmap(bitmap, new Rectangle(Point.Empty, control.Size));
+                int darkPixels = 0;
+                int edge = Math.Min(4, Math.Min(bitmap.Width, bitmap.Height));
+                for (int y = 0; y < bitmap.Height; y++)
+                {
+                    for (int x = 0; x < bitmap.Width; x++)
+                    {
+                        if (x >= edge && x < bitmap.Width - edge && y >= edge && y < bitmap.Height - edge) continue;
+                        Color pixel = bitmap.GetPixel(x, y);
+                        if (pixel.R < 24 && pixel.G < 24 && pixel.B < 24) darkPixels++;
+                    }
+                }
+                return darkPixels > 6;
             }
         }
 

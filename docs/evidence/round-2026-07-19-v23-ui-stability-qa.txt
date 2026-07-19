@@ -1,0 +1,261 @@
+PASS: quick action buttons have no clipped secondary captions
+PASS: full viewport keeps all quick actions visible
+PASS: full viewport contains quick action 1
+PASS: full viewport quick action 1 has no rectangular backfill
+PASS: full viewport contains quick action 2
+PASS: full viewport quick action 2 has no rectangular backfill
+PASS: full viewport separates quick actions 1 and 2
+PASS: full viewport contains quick action 3
+PASS: full viewport quick action 3 has no rectangular backfill
+PASS: full viewport separates quick actions 2 and 3
+PASS: full viewport contains quick action 4
+PASS: full viewport quick action 4 has no rectangular backfill
+PASS: full viewport separates quick actions 3 and 4
+PASS: full viewport contains every composer control
+PASS: full viewport separates attachment and send controls
+PASS: full viewport keeps input text clear of composer actions
+PASS: full viewport composer actions have no opaque square backfill
+PASS: full viewport contains voice play and caption controls
+PASS: full viewport separates voice play and caption controls
+PASS: full viewport keeps voice telemetry controls in one mode
+PASS: full viewport uses the expected telemetry mode
+PASS: full viewport contains voice telemetry
+PASS: full viewport separates caption, divider and waveform
+PASS: full viewport prevents voice text and waveform overlap
+PASS: settings drawer is visible
+PASS: model page is visible
+PASS: voice controls do not stack under model page
+PASS: full viewport shows memory cards
+PASS: voice redeploy is visible on voice page
+PASS: model controls do not stack under voice page
+PASS: voice redeploy stays inside drawer
+PASS: compact viewport keeps a usable voice dock
+PASS: voice play button stays inside compact dock
+PASS: voice caption stays inside compact dock
+PASS: voice divider is aligned in compact dock
+PASS: voice waveform remains visible in compact dock
+PASS: voice engine status remains visible in compact dock
+PASS: voice dock does not overlap the input composer
+PASS: voice dock clears the footer
+PASS: left footer text stays vertically contained
+PASS: right footer text stays vertically contained
+PASS: compact viewport keeps all quick actions visible
+PASS: compact viewport contains quick action 1
+PASS: compact viewport quick action 1 has no rectangular backfill
+PASS: compact viewport contains quick action 2
+PASS: compact viewport quick action 2 has no rectangular backfill
+PASS: compact viewport separates quick actions 1 and 2
+PASS: compact viewport contains quick action 3
+PASS: compact viewport quick action 3 has no rectangular backfill
+PASS: compact viewport separates quick actions 2 and 3
+PASS: compact viewport contains quick action 4
+PASS: compact viewport quick action 4 has no rectangular backfill
+PASS: compact viewport separates quick actions 3 and 4
+PASS: compact viewport contains every composer control
+PASS: compact viewport separates attachment and send controls
+PASS: compact viewport keeps input text clear of composer actions
+PASS: compact viewport composer actions have no opaque square backfill
+PASS: compact viewport contains voice play and caption controls
+PASS: compact viewport separates voice play and caption controls
+PASS: compact viewport keeps voice telemetry controls in one mode
+PASS: compact viewport uses the expected telemetry mode
+PASS: compact viewport contains voice telemetry
+PASS: compact viewport separates caption, divider and waveform
+PASS: compact viewport prevents voice text and waveform overlap
+PASS: minimum viewport keeps all quick actions visible
+PASS: minimum viewport contains quick action 1
+PASS: minimum viewport quick action 1 has no rectangular backfill
+PASS: minimum viewport contains quick action 2
+PASS: minimum viewport quick action 2 has no rectangular backfill
+PASS: minimum viewport separates quick actions 1 and 2
+PASS: minimum viewport contains quick action 3
+PASS: minimum viewport quick action 3 has no rectangular backfill
+PASS: minimum viewport separates quick actions 2 and 3
+PASS: minimum viewport contains quick action 4
+PASS: minimum viewport quick action 4 has no rectangular backfill
+PASS: minimum viewport separates quick actions 3 and 4
+PASS: minimum viewport contains every composer control
+PASS: minimum viewport separates attachment and send controls
+PASS: minimum viewport keeps input text clear of composer actions
+PASS: minimum viewport composer actions have no opaque square backfill
+PASS: minimum viewport contains voice play and caption controls
+PASS: minimum viewport separates voice play and caption controls
+PASS: minimum viewport keeps voice telemetry controls in one mode
+PASS: minimum viewport uses the expected telemetry mode
+PASS: 1024x576 keeps all quick actions visible
+PASS: 1024x576 contains quick action 1
+PASS: 1024x576 quick action 1 has no rectangular backfill
+PASS: 1024x576 contains quick action 2
+PASS: 1024x576 quick action 2 has no rectangular backfill
+PASS: 1024x576 separates quick actions 1 and 2
+PASS: 1024x576 contains quick action 3
+PASS: 1024x576 quick action 3 has no rectangular backfill
+PASS: 1024x576 separates quick actions 2 and 3
+PASS: 1024x576 contains quick action 4
+PASS: 1024x576 quick action 4 has no rectangular backfill
+PASS: 1024x576 separates quick actions 3 and 4
+PASS: 1024x576 contains every composer control
+PASS: 1024x576 separates attachment and send controls
+PASS: 1024x576 keeps input text clear of composer actions
+PASS: 1024x576 composer actions have no opaque square backfill
+PASS: 1024x576 contains voice play and caption controls
+PASS: 1024x576 separates voice play and caption controls
+PASS: 1024x576 keeps voice telemetry controls in one mode
+PASS: 1088x612 keeps all quick actions visible
+PASS: 1088x612 contains quick action 1
+PASS: 1088x612 quick action 1 has no rectangular backfill
+PASS: 1088x612 contains quick action 2
+PASS: 1088x612 quick action 2 has no rectangular backfill
+PASS: 1088x612 separates quick actions 1 and 2
+PASS: 1088x612 contains quick action 3
+PASS: 1088x612 quick action 3 has no rectangular backfill
+PASS: 1088x612 separates quick actions 2 and 3
+PASS: 1088x612 contains quick action 4
+PASS: 1088x612 quick action 4 has no rectangular backfill
+PASS: 1088x612 separates quick actions 3 and 4
+PASS: 1088x612 contains every composer control
+PASS: 1088x612 separates attachment and send controls
+PASS: 1088x612 keeps input text clear of composer actions
+PASS: 1088x612 composer actions have no opaque square backfill
+PASS: 1088x612 contains voice play and caption controls
+PASS: 1088x612 separates voice play and caption controls
+PASS: 1088x612 keeps voice telemetry controls in one mode
+PASS: 1100x620 keeps all quick actions visible
+PASS: 1100x620 contains quick action 1
+PASS: 1100x620 quick action 1 has no rectangular backfill
+PASS: 1100x620 contains quick action 2
+PASS: 1100x620 quick action 2 has no rectangular backfill
+PASS: 1100x620 separates quick actions 1 and 2
+PASS: 1100x620 contains quick action 3
+PASS: 1100x620 quick action 3 has no rectangular backfill
+PASS: 1100x620 separates quick actions 2 and 3
+PASS: 1100x620 contains quick action 4
+PASS: 1100x620 quick action 4 has no rectangular backfill
+PASS: 1100x620 separates quick actions 3 and 4
+PASS: 1100x620 contains every composer control
+PASS: 1100x620 separates attachment and send controls
+PASS: 1100x620 keeps input text clear of composer actions
+PASS: 1100x620 composer actions have no opaque square backfill
+PASS: 1100x620 contains voice play and caption controls
+PASS: 1100x620 separates voice play and caption controls
+PASS: 1100x620 keeps voice telemetry controls in one mode
+PASS: 1100x620 contains voice telemetry
+PASS: 1100x620 separates caption, divider and waveform
+PASS: 1100x620 prevents voice text and waveform overlap
+PASS: 1280x720 keeps all quick actions visible
+PASS: 1280x720 contains quick action 1
+PASS: 1280x720 quick action 1 has no rectangular backfill
+PASS: 1280x720 contains quick action 2
+PASS: 1280x720 quick action 2 has no rectangular backfill
+PASS: 1280x720 separates quick actions 1 and 2
+PASS: 1280x720 contains quick action 3
+PASS: 1280x720 quick action 3 has no rectangular backfill
+PASS: 1280x720 separates quick actions 2 and 3
+PASS: 1280x720 contains quick action 4
+PASS: 1280x720 quick action 4 has no rectangular backfill
+PASS: 1280x720 separates quick actions 3 and 4
+PASS: 1280x720 contains every composer control
+PASS: 1280x720 separates attachment and send controls
+PASS: 1280x720 keeps input text clear of composer actions
+PASS: 1280x720 composer actions have no opaque square backfill
+PASS: 1280x720 contains voice play and caption controls
+PASS: 1280x720 separates voice play and caption controls
+PASS: 1280x720 keeps voice telemetry controls in one mode
+PASS: 1280x720 contains voice telemetry
+PASS: 1280x720 separates caption, divider and waveform
+PASS: 1280x720 prevents voice text and waveform overlap
+PASS: 1366x768 keeps all quick actions visible
+PASS: 1366x768 contains quick action 1
+PASS: 1366x768 quick action 1 has no rectangular backfill
+PASS: 1366x768 contains quick action 2
+PASS: 1366x768 quick action 2 has no rectangular backfill
+PASS: 1366x768 separates quick actions 1 and 2
+PASS: 1366x768 contains quick action 3
+PASS: 1366x768 quick action 3 has no rectangular backfill
+PASS: 1366x768 separates quick actions 2 and 3
+PASS: 1366x768 contains quick action 4
+PASS: 1366x768 quick action 4 has no rectangular backfill
+PASS: 1366x768 separates quick actions 3 and 4
+PASS: 1366x768 contains every composer control
+PASS: 1366x768 separates attachment and send controls
+PASS: 1366x768 keeps input text clear of composer actions
+PASS: 1366x768 composer actions have no opaque square backfill
+PASS: 1366x768 contains voice play and caption controls
+PASS: 1366x768 separates voice play and caption controls
+PASS: 1366x768 keeps voice telemetry controls in one mode
+PASS: 1366x768 contains voice telemetry
+PASS: 1366x768 separates caption, divider and waveform
+PASS: 1366x768 prevents voice text and waveform overlap
+PASS: 1450x816 keeps all quick actions visible
+PASS: 1450x816 contains quick action 1
+PASS: 1450x816 quick action 1 has no rectangular backfill
+PASS: 1450x816 contains quick action 2
+PASS: 1450x816 quick action 2 has no rectangular backfill
+PASS: 1450x816 separates quick actions 1 and 2
+PASS: 1450x816 contains quick action 3
+PASS: 1450x816 quick action 3 has no rectangular backfill
+PASS: 1450x816 separates quick actions 2 and 3
+PASS: 1450x816 contains quick action 4
+PASS: 1450x816 quick action 4 has no rectangular backfill
+PASS: 1450x816 separates quick actions 3 and 4
+PASS: 1450x816 contains every composer control
+PASS: 1450x816 separates attachment and send controls
+PASS: 1450x816 keeps input text clear of composer actions
+PASS: 1450x816 composer actions have no opaque square backfill
+PASS: 1450x816 contains voice play and caption controls
+PASS: 1450x816 separates voice play and caption controls
+PASS: 1450x816 keeps voice telemetry controls in one mode
+PASS: 1450x816 contains voice telemetry
+PASS: 1450x816 separates caption, divider and waveform
+PASS: 1450x816 prevents voice text and waveform overlap
+PASS: 1672x941 keeps all quick actions visible
+PASS: 1672x941 contains quick action 1
+PASS: 1672x941 quick action 1 has no rectangular backfill
+PASS: 1672x941 contains quick action 2
+PASS: 1672x941 quick action 2 has no rectangular backfill
+PASS: 1672x941 separates quick actions 1 and 2
+PASS: 1672x941 contains quick action 3
+PASS: 1672x941 quick action 3 has no rectangular backfill
+PASS: 1672x941 separates quick actions 2 and 3
+PASS: 1672x941 contains quick action 4
+PASS: 1672x941 quick action 4 has no rectangular backfill
+PASS: 1672x941 separates quick actions 3 and 4
+PASS: 1672x941 contains every composer control
+PASS: 1672x941 separates attachment and send controls
+PASS: 1672x941 keeps input text clear of composer actions
+PASS: 1672x941 composer actions have no opaque square backfill
+PASS: 1672x941 contains voice play and caption controls
+PASS: 1672x941 separates voice play and caption controls
+PASS: 1672x941 keeps voice telemetry controls in one mode
+PASS: 1672x941 contains voice telemetry
+PASS: 1672x941 separates caption, divider and waveform
+PASS: 1672x941 prevents voice text and waveform overlap
+PASS: 1920x1080 keeps all quick actions visible
+PASS: 1920x1080 contains quick action 1
+PASS: 1920x1080 quick action 1 has no rectangular backfill
+PASS: 1920x1080 contains quick action 2
+PASS: 1920x1080 quick action 2 has no rectangular backfill
+PASS: 1920x1080 separates quick actions 1 and 2
+PASS: 1920x1080 contains quick action 3
+PASS: 1920x1080 quick action 3 has no rectangular backfill
+PASS: 1920x1080 separates quick actions 2 and 3
+PASS: 1920x1080 contains quick action 4
+PASS: 1920x1080 quick action 4 has no rectangular backfill
+PASS: 1920x1080 separates quick actions 3 and 4
+PASS: 1920x1080 contains every composer control
+PASS: 1920x1080 separates attachment and send controls
+PASS: 1920x1080 keeps input text clear of composer actions
+PASS: 1920x1080 composer actions have no opaque square backfill
+PASS: 1920x1080 contains voice play and caption controls
+PASS: 1920x1080 separates voice play and caption controls
+PASS: 1920x1080 keeps voice telemetry controls in one mode
+PASS: 1920x1080 contains voice telemetry
+PASS: 1920x1080 separates caption, divider and waveform
+PASS: 1920x1080 prevents voice text and waveform overlap
+PASS: tool center bundle page is visible
+PASS: tool controls stay inside window
+PASS: tool cards use an opaque compositing surface
+PASS: tool cards have no black frame or focus rectangle
+PASS: tool privacy page is visible
+PASS: privacy lists do not overlap
+PASS: tool skills page is complete

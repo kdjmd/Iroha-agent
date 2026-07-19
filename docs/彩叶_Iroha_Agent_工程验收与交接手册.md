@@ -268,6 +268,7 @@ cd desktop
 | T-06 | OpenAI、Anthropic、Gemini、Cohere 与兼容接口图片载荷 | 通过 | v2.3 Agent Tools QA |
 | U-01 | 能力中心三页高 DPI 无重叠 | 通过 | v2.3 Settings UI QA |
 | U-02 | 紧凑布局语音 Dock 子控件完整可见且不与输入区、底栏相交 | 通过 | 2026-07-19 Settings UI QA 与截图 |
+| U-03 | `980×552` 至 `1920×1080` 的快捷操作、输入、语音和能力卡片无黑边、残影或交叠 | 通过 | 2026-07-19 UI Stability 261 项 QA 与四张截图 |
 | P-01 | Portable ZIP 与哈希 | 通过 | 发布脚本 QA |
 | P-02 | FullVoice 五分卷与哈希 | 通过 | 发布脚本 QA |
 
@@ -294,6 +295,11 @@ docs/evidence/round-2026-07-18-v23-settings-ui-qa.txt
 docs/evidence/round-2026-07-18-v23-tools-center.png
 docs/evidence/round-2026-07-18-v23-tools-privacy.png
 docs/evidence/round-2026-07-18-v23-tools-skills.png
+docs/evidence/round-2026-07-19-v23-ui-stability-main.png
+docs/evidence/round-2026-07-19-v23-ui-stability-compact.png
+docs/evidence/round-2026-07-19-v23-ui-stability-minimum.png
+docs/evidence/round-2026-07-19-v23-ui-stability-tools.png
+docs/evidence/round-2026-07-19-v23-ui-stability-qa.txt
 ```
 
 ## 11. 故障排查
@@ -390,6 +396,7 @@ docs/evidence/round-2026-07-18-v23-tools-skills.png
 - [ ] `desktop/build.ps1` 编译通过。
 - [ ] 功能、Bootstrap 和真实语音 QA 全部通过。
 - [ ] Agent Tools 61 项回归和能力中心截图 QA 全部通过。
+- [ ] Settings UI 261 项多尺寸、透明底色与像素边缘回归全部通过。
 - [ ] Portable 与 FullVoice Release 均生成 SHA-256。
 - [ ] Git 历史不含 API Key、用户设置、权重、音频和运行时。
 - [ ] FullVoice 全部分卷齐全并可从 `.001` 解压。
@@ -397,6 +404,8 @@ docs/evidence/round-2026-07-18-v23-tools-skills.png
 - [ ] 计划发布的模型厂商至少各完成一轮真实账户聊天；Key 不进入证据文件。
 - [ ] 目标电脑完成一次首次语音部署和试听。
 - [ ] 版本号、标签、Release Notes 和验收证据一致。
+
+<!-- pagebreak -->
 
 ## 16. 签署
 

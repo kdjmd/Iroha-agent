@@ -1127,7 +1127,8 @@ namespace IrohaAgentDesktop
             sendButton.Text = "";
             sendButton.AccessibleDescription = "composer-send";
             sendButton.Font = new Font("Segoe Fluent Icons", 17F, FontStyle.Regular);
-            ((GlassButton)sendButton).OpaqueBackfill = true;
+            ((GlassButton)sendButton).OpaqueBackfill = false;
+            sendButton.BackColor = Color.Transparent;
             sendButton.Click += SendButton_Click;
             inputComposer.Controls.Add(sendButton);
 
@@ -1137,6 +1138,7 @@ namespace IrohaAgentDesktop
             attachImageButton.AccessibleDescription = "选择一张图片交给彩叶分析";
             attachImageButton.Font = new Font("Segoe Fluent Icons", 12F, FontStyle.Regular);
             ((GlassButton)attachImageButton).MinimalChrome = true;
+            attachImageButton.BackColor = Color.Transparent;
             attachImageButton.Click += AttachImageButton_Click;
             inputComposer.Controls.Add(attachImageButton);
             var attachTip = new ToolTip();
@@ -1947,16 +1949,19 @@ namespace IrohaAgentDesktop
         private void LayoutQuickActionButtons()
         {
             if (quickActionBar == null || quickActionButtons.Count == 0) return;
-            int gap = 10;
+            int gap = quickActionBar.Width < 450 ? 8 : 10;
             bool compact = quickActionBar.Height < 40;
             int y = 3;
             int height = compact ? Math.Max(26, quickActionBar.Height - 6) : Math.Max(36, quickActionBar.Height - 6);
-            int width = Math.Max(92, (quickActionBar.Width - gap * (quickActionButtons.Count + 1)) / quickActionButtons.Count);
+            int availableWidth = Math.Max(1, quickActionBar.Width - gap * (quickActionButtons.Count + 1));
+            int width = Math.Max(82, availableWidth / quickActionButtons.Count);
             for (int i = 0; i < quickActionButtons.Count; i++)
             {
                 quickActionButtons[i].SetBounds(gap + i * (width + gap), y, width, height);
+                quickActionButtons[i].BringToFront();
             }
             ApplyQuickActionRegion();
+            quickActionBar.Invalidate(true);
         }
 
         private void ApplyQuickActionRegion()
@@ -1996,13 +2001,15 @@ namespace IrohaAgentDesktop
         private void LayoutInputComposer()
         {
             if (inputComposer == null || inputBox == null || sendButton == null) return;
-            int buttonSize = Math.Max(46, inputComposer.Height - 14);
-            int attachSize = Math.Max(32, Math.Min(40, buttonSize - 8));
-            int sendX = inputComposer.Width - buttonSize - 12;
-            int attachX = sendX - attachSize - 6;
+            int buttonSize = Math.Min(60, Math.Max(44, inputComposer.Height - 14));
+            int attachSize = Math.Max(32, Math.Min(38, buttonSize - 8));
+            int rightPadding = inputComposer.Height < 64 ? 8 : 10;
+            int actionGap = inputComposer.Height < 64 ? 9 : 11;
+            int sendX = inputComposer.Width - buttonSize - rightPadding;
+            int attachX = sendX - attachSize - actionGap;
             int inputHeight = Math.Max(26, inputComposer.Height - 34);
             int inputY = Math.Max(12, (inputComposer.Height - inputHeight) / 2);
-            inputBox.SetBounds(22, inputY, Math.Max(120, attachX - 30), inputHeight);
+            inputBox.SetBounds(22, inputY, Math.Max(120, attachX - 34), inputHeight);
             if (inputPlaceholderLabel != null)
             {
                 inputPlaceholderLabel.SetBounds(inputBox.Left + 2, inputBox.Top - 1, inputBox.Width - 4, inputBox.Height);
@@ -2011,10 +2018,13 @@ namespace IrohaAgentDesktop
             if (attachImageButton != null)
             {
                 attachImageButton.SetBounds(attachX, Math.Max(5, (inputComposer.Height - attachSize) / 2), attachSize, attachSize);
+                attachImageButton.Region = null;
                 attachImageButton.BringToFront();
             }
             sendButton.SetBounds(sendX, Math.Max(5, (inputComposer.Height - buttonSize) / 2), buttonSize, buttonSize);
+            sendButton.Region = null;
             sendButton.BringToFront();
+            inputComposer.Invalidate(true);
             UpdateInputPlaceholder();
         }
 
@@ -2023,28 +2033,31 @@ namespace IrohaAgentDesktop
             if (voiceDock == null || testVoiceButton == null || voiceStateLabel == null || waveform == null) return;
 
             bool lowHeight = voiceDock.Height < 72;
-            int horizontalPadding = lowHeight ? 14 : 18;
-            int verticalPadding = lowHeight ? 8 : 12;
-            int playLimit = lowHeight ? 42 : 54;
+            int horizontalPadding = lowHeight ? 12 : 16;
+            int verticalPadding = lowHeight ? 8 : 11;
+            int playLimit = lowHeight ? 42 : 52;
             int playSize = Math.Max(36, Math.Min(playLimit, voiceDock.Height - verticalPadding * 2));
             int playY = Math.Max(6, (voiceDock.Height - playSize) / 2);
             testVoiceButton.SetBounds(horizontalPadding, playY, playSize, playSize);
             ApplyCircularRegion(testVoiceButton);
 
             int stateX = testVoiceButton.Right + (lowHeight ? 12 : 14);
-            int stateWidth = lowHeight ? 108 : 116;
+            int desiredStateWidth = lowHeight ? 104 : 116;
+            int minimumStateWidth = lowHeight ? 88 : 100;
             int stateHeight = Math.Min(42, Math.Max(36, voiceDock.Height - 12));
             int stateY = Math.Max(5, (voiceDock.Height - stateHeight) / 2);
-            int dividerX = stateX + stateWidth + (lowHeight ? 8 : 12);
-            int waveX = dividerX + 12;
             int rightPadding = lowHeight ? 14 : 18;
-            int waveWidth = voiceDock.Width - waveX - rightPadding;
-            bool showTelemetry = voiceDock.Width >= 320 && waveWidth >= 92;
-
-            if (!showTelemetry)
-            {
-                stateWidth = Math.Max(72, voiceDock.Width - stateX - rightPadding);
-            }
+            int dividerLeadingGap = lowHeight ? 8 : 12;
+            int waveformLeadingGap = lowHeight ? 10 : 12;
+            int minimumWaveformWidth = lowHeight ? 96 : 108;
+            int telemetryMinimumWidth = stateX + minimumStateWidth + dividerLeadingGap + 2 + waveformLeadingGap + minimumWaveformWidth + rightPadding;
+            bool showTelemetry = voiceDock.Width >= telemetryMinimumWidth;
+            int stateWidth = showTelemetry
+                ? Math.Min(desiredStateWidth, voiceDock.Width - stateX - dividerLeadingGap - 2 - waveformLeadingGap - minimumWaveformWidth - rightPadding)
+                : Math.Max(72, voiceDock.Width - stateX - rightPadding);
+            int dividerX = stateX + stateWidth + dividerLeadingGap;
+            int waveX = dividerX + 2 + waveformLeadingGap;
+            int waveWidth = Math.Max(0, voiceDock.Width - waveX - rightPadding);
             voiceStateLabel.SetBounds(stateX, stateY, stateWidth, stateHeight);
 
             if (voiceDockDivider != null)
@@ -2077,6 +2090,7 @@ namespace IrohaAgentDesktop
                 }
             }
 
+            voiceDock.Invalidate(true);
             testVoiceButton.BringToFront();
             voiceStateLabel.BringToFront();
             if (voiceDockDivider != null && voiceDockDivider.Visible) voiceDockDivider.BringToFront();
@@ -2816,7 +2830,6 @@ namespace IrohaAgentDesktop
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = primary ? Color.FromArgb(70, 205, 220) : Color.FromArgb(236, 251, 254);
             button.FlatAppearance.MouseDownBackColor = primary ? Color.FromArgb(38, 158, 188) : Color.FromArgb(220, 244, 250);
-            button.BackColor = primary ? Theme.Primary : Color.FromArgb(240, 252, 255);
             button.ForeColor = primary ? Color.White : Theme.TextMain;
             button.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
             button.Cursor = Cursors.Hand;
@@ -2824,8 +2837,13 @@ namespace IrohaAgentDesktop
             var glass = button as GlassButton;
             if (glass != null)
             {
+                button.BackColor = Color.Transparent;
                 glass.Accent = primary;
                 glass.TextColor = button.ForeColor;
+            }
+            else
+            {
+                button.BackColor = primary ? Theme.Primary : Color.FromArgb(240, 252, 255);
             }
         }
 
@@ -2842,6 +2860,7 @@ namespace IrohaAgentDesktop
                 glass.OpaqueBackfill = false;
                 glass.Radius = 14;
             }
+            button.BackColor = Color.Transparent;
             button.Tag = prompt;
             button.Width = 82;
             button.Height = 28;
@@ -5789,13 +5808,18 @@ namespace IrohaAgentDesktop
 
         private void DrawMinimalChrome(Graphics g)
         {
-            Rectangle hoverRect = new Rectangle(2, 3, Math.Max(1, Width - 5), Math.Max(1, Height - 6));
+            int hoverSize = Math.Max(1, Math.Min(Width, Height) - 8);
+            Rectangle hoverRect = new Rectangle(
+                (Width - hoverSize) / 2,
+                (Height - hoverSize) / 2,
+                hoverSize,
+                hoverSize);
             if (hover || pressed)
             {
                 Color hoverColor = pressed ? Color.FromArgb(178, 204, 237, 245) : Color.FromArgb(142, 220, 244, 249);
                 using (var hoverBrush = new SolidBrush(hoverColor))
                 {
-                    g.FillRoundedRectangle(hoverBrush, hoverRect, 8);
+                    g.FillEllipse(hoverBrush, hoverRect);
                 }
             }
             Color iconColor = Enabled ? Color.FromArgb(52, 91, 121) : Color.FromArgb(126, 145, 158);
@@ -5912,7 +5936,7 @@ namespace IrohaAgentDesktop
                     rect.Y,
                     Math.Max(20, rect.Width - textX - textRightPadding),
                     rect.Height);
-                using (Font compactFont = compactQuick ? new Font("Microsoft YaHei UI", 7.4F, FontStyle.Bold) : null)
+                using (Font compactFont = compactQuick ? new Font("Microsoft YaHei UI", 8.1F, FontStyle.Bold) : null)
                 {
                     Font titleFont = compactFont ?? Font;
                     if (!compactQuick && !string.IsNullOrWhiteSpace(SecondaryText) && rect.Height >= 38)
