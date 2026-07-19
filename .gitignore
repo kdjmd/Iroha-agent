@@ -20,6 +20,13 @@ desktop/dist-*/
 *.rar
 *.msi
 
+# Optional local handoff archive folders
+/release/
+/voice-source/
+/docs/external/
+/docs/references/
+/打开这里-工程归档索引.md
+
 # Local configuration and user data
 settings.json
 memory.json
