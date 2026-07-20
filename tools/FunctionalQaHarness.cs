@@ -78,6 +78,9 @@ namespace IrohaAgentDesktop
                 Assert(form.MinimumSize == new Size(980, 552), "declared minimum viewport", results);
 
                 TextBox input = GetPrivateField<TextBox>(form, "inputBox");
+                Label inputPlaceholder = GetPrivateField<Label>(form, "inputPlaceholderLabel");
+                GlassPanel inputComposer = GetPrivateField<GlassPanel>(form, "inputComposer");
+                Button attach = GetPrivateField<Button>(form, "attachImageButton");
                 Button send = GetPrivateField<Button>(form, "sendButton");
                 Button voice = GetPrivateField<Button>(form, "testVoiceButton");
                 GlassPanel dialogue = GetPrivateField<GlassPanel>(form, "dialoguePanel");
@@ -85,6 +88,39 @@ namespace IrohaAgentDesktop
                 Assert(input.Visible && send.Visible && voice.Visible, "primary composer and voice playback visible", results);
                 Assert(dialogue.Visible && !string.IsNullOrWhiteSpace(dialogueText.Text), "VN dialogue populated", results);
                 Assert(IsInside(form.ClientRectangle, input) && IsInside(form.ClientRectangle, send), "primary controls inside standard viewport", results);
+                Assert(inputComposer.AllowDrop && input.AllowDrop && inputPlaceholder.AllowDrop && attach.AllowDrop && send.AllowDrop, "composer supports file drop on every visible surface", results);
+                Assert(string.Equals(attach.AccessibleDescription, "composer-attach", StringComparison.Ordinal) && attach.Text == "\uE723", "attachment button is paperclip-only", results);
+
+                string attachmentPath = Path.Combine(Path.GetTempPath(), "iroha-agent-attachment-qa-" + Guid.NewGuid().ToString("N") + ".txt");
+                string unsupportedPath = Path.ChangeExtension(attachmentPath, ".exe");
+                try
+                {
+                    File.WriteAllText(attachmentPath, "attachment drag and drop qa", new UTF8Encoding(false));
+                    File.WriteAllText(unsupportedPath, "unsupported attachment qa", new UTF8Encoding(false));
+                    var dropData = new DataObject();
+                    dropData.SetData(DataFormats.FileDrop, new[] { attachmentPath });
+                    var dragArgs = new DragEventArgs(dropData, 0, 0, 0, DragDropEffects.Copy, DragDropEffects.None);
+                    InvokePrivateMethod(form, "Attachment_DragEnter", inputComposer, dragArgs);
+                    Assert(dragArgs.Effect == DragDropEffects.Copy, "supported document drag is accepted", results);
+                    Assert(inputComposer.BorderColor != Theme.BorderStrong, "valid drag highlights the composer", results);
+                    InvokePrivateMethod(form, "Attachment_DragDrop", inputComposer, dragArgs);
+                    Assert(string.Equals(GetPrivateField<string>(form, "pendingDocumentPath"), Path.GetFullPath(attachmentPath), StringComparison.OrdinalIgnoreCase), "dropped document becomes the pending attachment", results);
+                    Assert(inputPlaceholder.Text.Contains(Path.GetFileName(attachmentPath)), "dropped document name appears in the composer hint", results);
+                    Assert(((GlassButton)attach).Accent, "attachment control visibly confirms the pending file", results);
+
+                    object[] unsupportedArguments = { unsupportedPath, "" };
+                    Assert(!(bool)InvokePrivateMethod(form, "TryAttachFile", unsupportedArguments) && !string.IsNullOrWhiteSpace((string)unsupportedArguments[1]), "unsupported attachment is rejected with feedback", results);
+                }
+                finally
+                {
+                    if (File.Exists(attachmentPath)) File.Delete(attachmentPath);
+                    if (File.Exists(unsupportedPath)) File.Delete(unsupportedPath);
+                    SetPrivateField(form, "pendingDocumentPath", null);
+                    SetPrivateField(form, "pendingImagePath", null);
+                    InvokePrivateMethod(form, "SetAttachmentButtonActive", false);
+                    InvokePrivateMethod(form, "SetAttachmentDropHighlight", false);
+                    InvokePrivateMethod(form, "UpdateInputPlaceholder");
+                }
 
                 List<Button> quickActions = GetPrivateField<List<Button>>(form, "quickActionButtons");
                 Assert(quickActions.Count == 4, "four quick actions", results);
@@ -231,6 +267,13 @@ namespace IrohaAgentDesktop
             FieldInfo field = owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
             if (field == null) throw new MissingFieldException(owner.GetType().FullName, name);
             return (T)field.GetValue(owner);
+        }
+
+        private static void SetPrivateField(object owner, string name, object value)
+        {
+            FieldInfo field = owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null) throw new MissingFieldException(owner.GetType().FullName, name);
+            field.SetValue(owner, value);
         }
 
         private static object InvokePrivateMethod(object owner, string name, params object[] values)

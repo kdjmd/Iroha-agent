@@ -719,6 +719,17 @@ namespace IrohaAgentDesktop
 
     internal sealed class MainForm : Form
     {
+        private static readonly HashSet<string> ImageAttachmentExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"
+        };
+
+        private static readonly HashSet<string> DocumentAttachmentExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".txt", ".md", ".csv", ".json", ".xml", ".html", ".htm", ".log",
+            ".cs", ".js", ".ts", ".py", ".docx", ".pdf"
+        };
+
         private const string SidebarSearchPlaceholder = "搜索聊天记录";
 
         private readonly JavaScriptSerializer serializer = new JavaScriptSerializer();
@@ -829,6 +840,7 @@ namespace IrohaAgentDesktop
         private DateTime lastAvatarInteractionUtc;
         private Point dragOrigin;
         private string pendingImagePath;
+        private string pendingDocumentPath;
         private string activeImagePath;
         private Timer reminderTimer;
 
@@ -1135,15 +1147,22 @@ namespace IrohaAgentDesktop
 
             attachImageButton = CreateGlassButton("\uE723", false);
             SetButtonChrome(attachImageButton, true);
-            attachImageButton.AccessibleName = "附加图片";
-            attachImageButton.AccessibleDescription = "选择一张图片交给彩叶分析";
+            attachImageButton.AccessibleName = "添加附件";
+            attachImageButton.AccessibleDescription = "composer-attach";
             attachImageButton.Font = new Font("Segoe Fluent Icons", 12F, FontStyle.Regular);
-            ((GlassButton)attachImageButton).MinimalChrome = true;
+            ((GlassButton)attachImageButton).CircularChrome = true;
+            ((GlassButton)attachImageButton).MinimalChrome = false;
+            ((GlassButton)attachImageButton).OpaqueBackfill = false;
             attachImageButton.BackColor = Color.Transparent;
             attachImageButton.Click += AttachImageButton_Click;
             inputComposer.Controls.Add(attachImageButton);
             var attachTip = new ToolTip();
-            attachTip.SetToolTip(attachImageButton, "附加图片");
+            attachTip.SetToolTip(attachImageButton, "添加图片或文档");
+            RegisterAttachmentDropTarget(inputComposer);
+            RegisterAttachmentDropTarget(inputBox);
+            RegisterAttachmentDropTarget(inputPlaceholderLabel);
+            RegisterAttachmentDropTarget(attachImageButton);
+            RegisterAttachmentDropTarget(sendButton);
 
             voiceDock = new GlassPanel();
             voiceDock.PaintChrome = true;
@@ -2018,6 +2037,10 @@ namespace IrohaAgentDesktop
         private void LayoutInputComposer()
         {
             if (inputComposer == null || inputBox == null || sendButton == null) return;
+            Rectangle previousAttachBounds = attachImageButton != null ? attachImageButton.Bounds : Rectangle.Empty;
+            Rectangle previousSendBounds = sendButton.Bounds;
+            if (!previousAttachBounds.IsEmpty) inputComposer.Invalidate(previousAttachBounds);
+            if (!previousSendBounds.IsEmpty) inputComposer.Invalidate(previousSendBounds);
             int buttonSize = Math.Min(54, Math.Max(42, inputComposer.Height - 16));
             int attachSize = Math.Max(32, Math.Min(36, buttonSize - 8));
             int rightPadding = inputComposer.Height < 64 ? 14 : 16;
@@ -2919,9 +2942,10 @@ namespace IrohaAgentDesktop
         private void UpdateInputPlaceholder()
         {
             if (inputPlaceholderLabel == null || inputBox == null) return;
-            inputPlaceholderLabel.Text = string.IsNullOrWhiteSpace(pendingImagePath)
+            string attachmentPath = !string.IsNullOrWhiteSpace(pendingImagePath) ? pendingImagePath : pendingDocumentPath;
+            inputPlaceholderLabel.Text = string.IsNullOrWhiteSpace(attachmentPath)
                 ? "输入你的消息...（Shift + Enter 换行）"
-                : "已附加 " + Path.GetFileName(pendingImagePath) + "，输入你想了解的内容";
+                : "已附加 " + Path.GetFileName(attachmentPath) + "，输入你想了解的内容";
             inputPlaceholderLabel.Visible = inputBox.TextLength == 0 && !inputBox.Focused;
         }
 
@@ -2929,23 +2953,126 @@ namespace IrohaAgentDesktop
         {
             using (var dialog = new OpenFileDialog())
             {
-                dialog.Title = "选择要交给彩叶分析的图片";
-                dialog.Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|所有文件|*.*";
+                dialog.Title = "选择要添加到会话的文件";
+                dialog.Filter = "支持的图片与文档|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.txt;*.md;*.csv;*.json;*.xml;*.html;*.htm;*.log;*.cs;*.js;*.ts;*.py;*.docx;*.pdf|图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|文档文件|*.txt;*.md;*.csv;*.json;*.xml;*.html;*.htm;*.log;*.cs;*.js;*.ts;*.py;*.docx;*.pdf|所有文件|*.*";
                 dialog.CheckFileExists = true;
                 dialog.Multiselect = false;
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                pendingImagePath = Path.GetFullPath(dialog.FileName);
-                var glass = attachImageButton as GlassButton;
-                if (glass != null)
+                string error;
+                if (!TryAttachFile(dialog.FileName, out error))
                 {
-                    glass.Accent = true;
-                    glass.TextColor = Color.White;
-                    glass.Invalidate();
+                    AddFeedback(error);
+                    SetStatus(error, AvatarState.Error);
                 }
-                UpdateInputPlaceholder();
-                SetStatus("已附加图片，等待你的问题", AvatarState.Happy);
-                inputBox.Focus();
             }
+        }
+
+        private void RegisterAttachmentDropTarget(Control control)
+        {
+            if (control == null) return;
+            control.AllowDrop = true;
+            control.DragEnter += Attachment_DragEnter;
+            control.DragOver += Attachment_DragEnter;
+            control.DragLeave += Attachment_DragLeave;
+            control.DragDrop += Attachment_DragDrop;
+        }
+
+        private void Attachment_DragEnter(object sender, DragEventArgs e)
+        {
+            string path;
+            string error;
+            bool accepted = TryGetDroppedFile(e.Data, out path, out error) && TryValidateAttachment(path, out error);
+            e.Effect = accepted ? DragDropEffects.Copy : DragDropEffects.None;
+            SetAttachmentDropHighlight(accepted);
+        }
+
+        private void Attachment_DragLeave(object sender, EventArgs e)
+        {
+            SetAttachmentDropHighlight(false);
+        }
+
+        private void Attachment_DragDrop(object sender, DragEventArgs e)
+        {
+            SetAttachmentDropHighlight(false);
+            string path;
+            string error;
+            if (!TryGetDroppedFile(e.Data, out path, out error) || !TryAttachFile(path, out error))
+            {
+                AddFeedback(error);
+                SetStatus(error, AvatarState.Error);
+            }
+        }
+
+        private void SetAttachmentDropHighlight(bool active)
+        {
+            if (inputComposer == null) return;
+            inputComposer.BorderColor = active ? Color.FromArgb(208, 73, 199, 218) : Theme.BorderStrong;
+            inputComposer.Invalidate();
+        }
+
+        private static bool TryGetDroppedFile(IDataObject data, out string path, out string error)
+        {
+            path = "";
+            error = "请拖入一个受支持的文件";
+            if (data == null || !data.GetDataPresent(DataFormats.FileDrop)) return false;
+            string[] files = data.GetData(DataFormats.FileDrop) as string[];
+            if (files == null || files.Length == 0) return false;
+            if (files.Length != 1)
+            {
+                error = "一次只能添加一个文件";
+                return false;
+            }
+            path = files[0];
+            return true;
+        }
+
+        private static bool TryValidateAttachment(string filePath, out string error)
+        {
+            error = "";
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                error = "文件不存在或无法访问";
+                return false;
+            }
+            string extension = Path.GetExtension(filePath);
+            bool image = ImageAttachmentExtensions.Contains(extension);
+            bool document = DocumentAttachmentExtensions.Contains(extension);
+            if (!image && !document)
+            {
+                error = "暂不支持这种文件格式";
+                return false;
+            }
+            long maxBytes = image ? 20L * 1024L * 1024L : 25L * 1024L * 1024L;
+            if (new FileInfo(filePath).Length > maxBytes)
+            {
+                error = image ? "图片不能超过 20 MB" : "文档不能超过 25 MB";
+                return false;
+            }
+            return true;
+        }
+
+        private bool TryAttachFile(string filePath, out string error)
+        {
+            error = "";
+            if (!TryValidateAttachment(filePath, out error)) return false;
+            string fullPath = Path.GetFullPath(filePath);
+            bool image = ImageAttachmentExtensions.Contains(Path.GetExtension(fullPath));
+            pendingImagePath = image ? fullPath : null;
+            pendingDocumentPath = image ? null : fullPath;
+            SetAttachmentButtonActive(true);
+            UpdateInputPlaceholder();
+            SetStatus(image ? "已添加图片，等待你的问题" : "已添加文档，等待你的问题", AvatarState.Happy);
+            inputBox.Focus();
+            return true;
+        }
+
+        private void SetAttachmentButtonActive(bool active)
+        {
+            var glass = attachImageButton as GlassButton;
+            if (glass == null) return;
+            glass.Accent = active;
+            glass.TextColor = active ? Color.White : Theme.TextMain;
+            glass.Invalidate();
         }
 
         private void SettingsButton_Click(object sender, EventArgs e)
@@ -3825,13 +3952,19 @@ namespace IrohaAgentDesktop
         {
             string text = inputBox.Text.Trim();
             string selectedImagePath = pendingImagePath;
-            if (text.Length == 0 && string.IsNullOrWhiteSpace(selectedImagePath))
+            string selectedDocumentPath = pendingDocumentPath;
+            if (text.Length == 0 && string.IsNullOrWhiteSpace(selectedImagePath) && string.IsNullOrWhiteSpace(selectedDocumentPath))
             {
                 AddFeedback("输入为空，未发送");
                 SetStatus("请输入内容", AvatarState.Error);
                 return;
             }
-            if (text.Length == 0) text = "请分析我刚刚选择的这张图片。";
+            if (text.Length == 0)
+            {
+                text = !string.IsNullOrWhiteSpace(selectedImagePath)
+                    ? "请分析我刚刚添加的这张图片。"
+                    : "请阅读并总结我刚刚添加的文件。";
+            }
 
             if (string.IsNullOrWhiteSpace(settings.ApiKey) && quickApiKeyBox != null && !string.IsNullOrWhiteSpace(quickApiKeyBox.Text))
             {
@@ -3845,16 +3978,27 @@ namespace IrohaAgentDesktop
                 activeImagePath = selectedImagePath;
                 modelText += "\n[用户本次主动选择的图片路径：" + selectedImagePath + "。需要理解图片时请调用 image_analyze。]";
                 pendingImagePath = null;
-                var attachGlass = attachImageButton as GlassButton;
-                if (attachGlass != null)
-                {
-                    attachGlass.Accent = false;
-                    attachGlass.TextColor = Theme.TextMain;
-                    attachGlass.Invalidate();
-                }
             }
+            else if (!string.IsNullOrWhiteSpace(selectedDocumentPath))
+            {
+                string documentText;
+                string documentFormat;
+                string documentError;
+                if (!DocumentTextReader.TryRead(selectedDocumentPath, 24000, out documentText, out documentFormat, out documentError))
+                {
+                    AddFeedback("附件读取失败: " + documentError);
+                    SetStatus("附件读取失败", AvatarState.Error);
+                    return;
+                }
+                modelText += "\n[用户本次主动添加的文件：" + Path.GetFileName(selectedDocumentPath) + "；格式：" + documentFormat + "。以下是文件内容。]\n" + documentText;
+                pendingDocumentPath = null;
+            }
+            SetAttachmentButtonActive(false);
             inputBox.Clear();
-            AddUserLine(text);
+            string displayText = text;
+            string selectedAttachmentPath = !string.IsNullOrWhiteSpace(selectedImagePath) ? selectedImagePath : selectedDocumentPath;
+            if (!string.IsNullOrWhiteSpace(selectedAttachmentPath)) displayText += "\n附件：" + Path.GetFileName(selectedAttachmentPath);
+            AddUserLine(displayText);
             RememberFromUserInput(text);
             history.Add(new Dictionary<string, string> { { "role", "user" }, { "content", modelText } });
             TrimHistory();
@@ -5867,10 +6011,12 @@ namespace IrohaAgentDesktop
                 size);
 
             bool composerSend = string.Equals(AccessibleDescription, "composer-send", StringComparison.OrdinalIgnoreCase);
-            Color top = composerSend
+            bool composerAttach = string.Equals(AccessibleDescription, "composer-attach", StringComparison.OrdinalIgnoreCase);
+            bool accentCircle = composerSend || (composerAttach && Accent);
+            Color top = accentCircle
                 ? (pressed ? Color.FromArgb(255, 43, 169, 195) : hover ? Color.FromArgb(255, 111, 221, 229) : Color.FromArgb(255, 91, 207, 219))
                 : Color.FromArgb(255, 255, 255, 255);
-            Color bottom = composerSend
+            Color bottom = accentCircle
                 ? (pressed ? Color.FromArgb(255, 31, 145, 177) : Color.FromArgb(255, 43, 177, 204))
                 : (pressed ? Color.FromArgb(255, 199, 241, 248) : Color.FromArgb(255, 226, 248, 252));
             using (var shadow = new SolidBrush(Color.FromArgb(24, 46, 128, 160)))
@@ -5881,13 +6027,13 @@ namespace IrohaAgentDesktop
             {
                 g.FillEllipse(brush, circle);
             }
-            using (var pen = new Pen(composerSend ? Color.FromArgb(180, 116, 225, 234) : Color.FromArgb(150, 176, 225, 236), 1F))
+            using (var pen = new Pen(accentCircle ? Color.FromArgb(180, 116, 225, 234) : Color.FromArgb(150, 176, 225, 236), 1F))
             {
                 g.DrawEllipse(pen, circle);
             }
-            if (composerSend)
+            if (composerSend || composerAttach)
             {
-                DrawButtonContent(g, circle, Color.White);
+                DrawButtonContent(g, circle, accentCircle ? Color.White : Color.FromArgb(52, 105, 137));
                 return;
             }
             if (string.Equals(AccessibleDescription, "voice-play", StringComparison.OrdinalIgnoreCase))
@@ -5920,6 +6066,17 @@ namespace IrohaAgentDesktop
             if (string.Equals(quickIcon, "composer-send", StringComparison.OrdinalIgnoreCase))
             {
                 DrawPaperPlane(g, rect, Accent ? Color.White : Color.FromArgb(64, 166, 196));
+                return;
+            }
+            if (string.Equals(quickIcon, "composer-attach", StringComparison.OrdinalIgnoreCase))
+            {
+                TextRenderer.DrawText(
+                    g,
+                    "\uE723",
+                    Font,
+                    rect,
+                    Accent ? Color.White : Color.FromArgb(52, 105, 137),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                 return;
             }
             if (string.Equals(quickIcon, "voice-play", StringComparison.OrdinalIgnoreCase))

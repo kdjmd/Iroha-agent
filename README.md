@@ -12,7 +12,7 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 
 > gsv语音模型来自B站up“云游雨散_”大佬的分享，所有角色立绘与背景等图像元素来自于chatgpt图像生成。
 
-![Iroha Agent Windows 界面](docs/evidence/round-2026-07-19-v23-ui-stability-main.png)
+![Iroha Agent Windows 界面](docs/evidence/round-2026-07-20-v23-attachment-drop-main.png)
 
 ## v2.3.0 更新内容
 
@@ -20,9 +20,10 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 - **Tools 与 Skills 正式可用**：新增 18 个权限受控 Tool 和 10 个可选 Skill，支持联网搜索、长期记忆、提醒、文档/PDF、私人知识库、天气、本地日历、邮件草稿、图片理解和受控系统操作。
 - **密钥与接口安全**：不同厂商的 API Key 分开保存，并使用 Windows CurrentUser DPAPI 加密；远程明文 HTTP、私网探测、目录越界和敏感错误回显均被拦截。
 - **语音部署增强**：首次启动自动匹配 GPT-SoVITS，显示部署进度；设置中新增“重新部署语音”，失败时保留旧运行时和原始模型包。
-- **多尺寸 UI 稳定性修复**：能力卡不再出现黑色硬边或系统虚线焦点框；试听文字、波形和引擎状态严格分区；快捷操作使用真实圆角裁切；回形针与发送按钮使用独立圆形区域和安全边距，不再出现方形底色、白缝或边缘裁切。布局矩阵覆盖 `980×552` 至 `1920×1080`，并在 Windows 150% 缩放下实机截图复核。
+- **多尺寸 UI 稳定性修复**：能力卡不再出现黑色硬边或系统虚线焦点框；试听文字、波形和引擎状态严格分区；快捷操作使用真实圆角裁切；回形针与发送按钮使用独立圆形区域和安全边距，附件圆钮只绘制回形针，不再与纸飞机重合、出现方形底色、白缝或边缘裁切。布局矩阵覆盖 `980×552` 至 `1920×1080`，并在 Windows 150% 缩放下实机截图复核。
 - **记忆与配置可靠性**：设置、记忆及本地工具数据采用原子写入、备份恢复和损坏文件隔离，旧版 DeepSeek 配置与明文 Key 会安全迁移。
-- **完整验收资料**：Windows 编译、模型协议、设置 UI、长期记忆、语音部署和 61 项 Tools 安全回归均已通过；本地统一回归共 632 项检查全部通过。
+- **附件拖放**：图片、TXT/Markdown、Office Open XML 文档、文字型 PDF 与常用代码/数据文件可直接拖入整个会话输入栏，也可点击回形针选择；不支持格式和超限文件会即时给出反馈。
+- **完整验收资料**：Windows 编译、模型协议、设置 UI、长期记忆、语音部署和 61 项 Tools 安全回归均已通过；本地统一回归共 684 项检查全部通过。
 
 ![v2.3.0 Tools 与 Skills 能力中心](docs/evidence/round-2026-07-19-v23-ui-stability-tools.png)
 
@@ -45,6 +46,7 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 - 设置内“重新部署语音”，仅替换应用托管副本，不修改原始语音包或外部运行时
 - 待机、眨眼、思考、说话、开心、害羞、惊讶和错误等自然逐帧动画
 - 会话新建、重命名、删除、置顶、保存与清空
+- 图片与常用文档可点击回形针添加，或直接拖入整个会话输入栏；附件名称和待发送状态会立即显示
 - 长期记忆、提示词压缩、快捷动作和视觉小说对白框
 - A/B/C 三组 18 个 Tools：联网与提醒、文档与知识库、天气与本地日程、邮件草稿、剪贴板、图片理解、媒体键和应用白名单
 - 10 个可选 Skill 工作方式：日常陪伴、记忆整理、联网核查、计划复盘、学习、阅读、旅行、隐私守护与语音表演
@@ -153,6 +155,9 @@ voice-pack/    语音集成元数据，不包含权重和音频
 - [V2.3 底部 UI 修复前后对比](docs/evidence/round-2026-07-20-v23-bottom-ui-comparison.png)
 - [V2.3 底部 UI 最终实机截图](docs/evidence/round-2026-07-20-v23-bottom-ui-final.png)
 - [V2.3 设置与 UI 338 项最终回归](docs/evidence/round-2026-07-20-v23-bottom-ui-qa.txt)
+- [V2.3 附件与拖放最终界面](docs/evidence/round-2026-07-20-v23-attachment-drop-main.png)
+- [V2.3 附件与拖放功能回归（47 项）](docs/evidence/round-2026-07-20-v23-attachment-drop-functional-qa.txt)
+- [V2.3 附件与拖放设置/UI 回归（382 项）](docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt)
 - [V2.1 功能回归](docs/evidence/round-2026-07-16-v21-functional-qa.txt)
 - [V2.1 自动部署回归](docs/evidence/round-2026-07-16-v21-bootstrap-qa.txt)
 - [V2.1 完整运行时语音回归](docs/evidence/round-2026-07-16-v21-full-voice-qa.txt)

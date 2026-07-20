@@ -261,8 +261,10 @@ namespace IrohaAgentDesktop
 
             GlassPanel composer = GetPrivateField<GlassPanel>(form, "inputComposer");
             TextBox input = GetPrivateField<TextBox>(form, "inputBox");
+            Label placeholder = GetPrivateField<Label>(form, "inputPlaceholderLabel");
             Button attach = GetPrivateField<Button>(form, "attachImageButton");
             Button send = GetPrivateField<Button>(form, "sendButton");
+            GlassButton attachGlass = attach as GlassButton;
             GlassButton sendGlass = send as GlassButton;
             Assert(composer.ClientRectangle.Contains(input.Bounds) && composer.ClientRectangle.Contains(attach.Bounds) && composer.ClientRectangle.Contains(send.Bounds), label + " contains every composer control", results);
             Assert(!attach.Bounds.IntersectsWith(send.Bounds) && send.Left - attach.Right >= 10, label + " separates attachment and send controls", results);
@@ -270,7 +272,11 @@ namespace IrohaAgentDesktop
             Assert(input.Right + 8 <= attach.Left, label + " keeps input text clear of composer actions", results);
             Assert(attach.BackColor.A == 0 && send.BackColor.A == 0, label + " composer actions have no opaque square backfill", results);
             Assert(HasClippedCorners(attach) && HasClippedCorners(send), label + " clips attachment and send controls to circles", results);
+            Assert(attachGlass != null && attachGlass.CircularChrome && !attachGlass.MinimalChrome, label + " renders attachment as an independent circular control", results);
             Assert(sendGlass != null && sendGlass.CircularChrome, label + " renders the send action as circular chrome", results);
+            Assert(string.Equals(attach.AccessibleDescription, "composer-attach", StringComparison.Ordinal) && attach.Text == "\uE723", label + " attachment action owns only the paperclip glyph", results);
+            Assert(string.Equals(send.AccessibleDescription, "composer-send", StringComparison.Ordinal) && string.IsNullOrEmpty(send.Text), label + " send action uses only its custom paper-plane glyph", results);
+            Assert(composer.AllowDrop && input.AllowDrop && placeholder.AllowDrop && attach.AllowDrop && send.AllowDrop, label + " accepts file drops across the full composer", results);
 
             GlassPanel dock = GetPrivateField<GlassPanel>(form, "voiceDock");
             Button play = GetPrivateField<Button>(form, "testVoiceButton");

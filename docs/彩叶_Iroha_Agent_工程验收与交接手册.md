@@ -270,6 +270,7 @@ cd desktop
 | U-02 | 紧凑布局语音 Dock 子控件完整可见且不与输入区、底栏相交 | 通过 | 2026-07-19 Settings UI QA 与截图 |
 | U-03 | `980×552` 至 `1920×1080` 的快捷操作、输入、语音和能力卡片无黑边、残影或交叠 | 通过 | 2026-07-19 UI Stability 261 项 QA 与四张截图 |
 | U-04 | 150% Windows 缩放下快捷按钮无方形底色，附件与发送按钮保持圆形、分离且不贴边 | 通过 | 2026-07-20 Bottom UI 338 项 QA、实机截图与前后对比 |
+| U-05 | 附件圆钮只显示回形针，整个会话输入栏可接收受支持的单文件拖放，附件状态和错误反馈完整 | 通过 | 2026-07-20 Attachment Drop；684 项统一回归，其中 47 项功能 QA、382 项 UI QA，并完成最终截图复核 |
 | P-01 | Portable ZIP 与哈希 | 通过 | 发布脚本 QA |
 | P-02 | FullVoice 五分卷与哈希 | 通过 | 发布脚本 QA |
 
@@ -304,6 +305,10 @@ docs/evidence/round-2026-07-19-v23-ui-stability-qa.txt
 docs/evidence/round-2026-07-20-v23-bottom-ui-comparison.png
 docs/evidence/round-2026-07-20-v23-bottom-ui-final.png
 docs/evidence/round-2026-07-20-v23-bottom-ui-qa.txt
+docs/evidence/round-2026-07-20-v23-attachment-drop-main.png
+docs/evidence/round-2026-07-20-v23-attachment-drop-control.png
+docs/evidence/round-2026-07-20-v23-attachment-drop-functional-qa.txt
+docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt
 ```
 
 ## 11. 故障排查
@@ -401,7 +406,8 @@ docs/evidence/round-2026-07-20-v23-bottom-ui-qa.txt
 - [ ] `desktop/build.ps1` 编译通过。
 - [ ] 功能、Bootstrap 和真实语音 QA 全部通过。
 - [ ] Agent Tools 61 项回归和能力中心截图 QA 全部通过。
-- [ ] Settings UI 338 项多尺寸、透明底色、圆角 Region 与像素边缘回归全部通过。
+- [ ] Settings UI 382 项多尺寸、透明底色、圆角 Region、附件图标归属、拖放命中区与像素边缘回归全部通过。
+- [ ] Functional QA 47 项主要交互回归全部通过，包括文件拖放、附件提示和非法格式拦截。
 - [ ] Portable 与 FullVoice Release 均生成 SHA-256。
 - [ ] Git 历史不含 API Key、用户设置、权重、音频和运行时。
 - [ ] FullVoice 全部分卷齐全并可从 `.001` 解压。
