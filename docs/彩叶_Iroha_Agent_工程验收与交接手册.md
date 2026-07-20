@@ -269,6 +269,7 @@ cd desktop
 | U-01 | 能力中心三页高 DPI 无重叠 | 通过 | v2.3 Settings UI QA |
 | U-02 | 紧凑布局语音 Dock 子控件完整可见且不与输入区、底栏相交 | 通过 | 2026-07-19 Settings UI QA 与截图 |
 | U-03 | `980×552` 至 `1920×1080` 的快捷操作、输入、语音和能力卡片无黑边、残影或交叠 | 通过 | 2026-07-19 UI Stability 261 项 QA 与四张截图 |
+| U-04 | 150% Windows 缩放下快捷按钮无方形底色，附件与发送按钮保持圆形、分离且不贴边 | 通过 | 2026-07-20 Bottom UI 338 项 QA、实机截图与前后对比 |
 | P-01 | Portable ZIP 与哈希 | 通过 | 发布脚本 QA |
 | P-02 | FullVoice 五分卷与哈希 | 通过 | 发布脚本 QA |
 
@@ -300,6 +301,9 @@ docs/evidence/round-2026-07-19-v23-ui-stability-compact.png
 docs/evidence/round-2026-07-19-v23-ui-stability-minimum.png
 docs/evidence/round-2026-07-19-v23-ui-stability-tools.png
 docs/evidence/round-2026-07-19-v23-ui-stability-qa.txt
+docs/evidence/round-2026-07-20-v23-bottom-ui-comparison.png
+docs/evidence/round-2026-07-20-v23-bottom-ui-final.png
+docs/evidence/round-2026-07-20-v23-bottom-ui-qa.txt
 ```
 
 ## 11. 故障排查
@@ -350,6 +354,7 @@ docs/evidence/round-2026-07-19-v23-ui-stability-qa.txt
 - 图标必须与真实功能一一对应。
 - 所有新增控件必须验证 1280×720 与 980×552。
 - 语音 Dock 的遥测信息应按可用宽度降级，不得仅因高 DPI 下控件高度变小而隐藏波形和引擎状态。
+- 透明自绘按钮必须使用与轮廓一致的 `Region`，并在 125%/150% 缩放的实际桌面合成画面中检查父控件重绘底色。
 
 ### 13.2 语音
 
@@ -396,7 +401,7 @@ docs/evidence/round-2026-07-19-v23-ui-stability-qa.txt
 - [ ] `desktop/build.ps1` 编译通过。
 - [ ] 功能、Bootstrap 和真实语音 QA 全部通过。
 - [ ] Agent Tools 61 项回归和能力中心截图 QA 全部通过。
-- [ ] Settings UI 261 项多尺寸、透明底色与像素边缘回归全部通过。
+- [ ] Settings UI 338 项多尺寸、透明底色、圆角 Region 与像素边缘回归全部通过。
 - [ ] Portable 与 FullVoice Release 均生成 SHA-256。
 - [ ] Git 历史不含 API Key、用户设置、权重、音频和运行时。
 - [ ] FullVoice 全部分卷齐全并可从 `.001` 解压。

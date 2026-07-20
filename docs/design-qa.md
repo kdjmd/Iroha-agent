@@ -20,6 +20,9 @@
 - v2.3 UI 稳定性最小主界面：`docs/evidence/round-2026-07-19-v23-ui-stability-minimum.png`
 - v2.3 UI 稳定性能力中心：`docs/evidence/round-2026-07-19-v23-ui-stability-tools.png`
 - v2.3 UI 稳定性 261 项断言：`docs/evidence/round-2026-07-19-v23-ui-stability-qa.txt`
+- v2.3 底部 UI 修复前后对比：`docs/evidence/round-2026-07-20-v23-bottom-ui-comparison.png`
+- v2.3 底部 UI 150% 缩放最终实机截图：`docs/evidence/round-2026-07-20-v23-bottom-ui-final.png`
+- v2.3 底部 UI 338 项最终断言：`docs/evidence/round-2026-07-20-v23-bottom-ui-qa.txt`
 - 首次语音部署：`docs/evidence/round-2026-07-16-v21-deployment-progress.png`
 - 参考图对比：`docs/evidence/round-2026-07-16-v20-comparison-full.png`
 - 真实语音播放状态：`docs/evidence/round-2026-07-16-v20-packaged-voice-speaking.png`
@@ -51,7 +54,7 @@
 - 名字牌、快捷动作、设置和右侧工具栏均有真实点击反馈。
 - 标准窗口与紧凑窗口保持输入、发送、试听和 VN 对白主工作流。
 - 1280×720 逻辑尺寸下，语音 Dock 的播放按钮、说明、分隔线、波形和引擎状态均在卡片内部，且不与输入区或底栏相交。
-- 8 组尺寸矩阵逐项检查快捷按钮、输入文字、附件、发送、试听说明、分隔、波形和引擎状态的包含关系与间距。
+- 8 组尺寸矩阵逐项检查快捷按钮、输入文字、附件、发送、试听说明、分隔、波形和引擎状态的包含关系与间距；快捷按钮四角和输入操作圆形 Region 另有明确断言。
 - 首次语音部署使用独立 owner-drawn 浮窗，进度、阶段和细节分层显示。
 - “重新部署 GPT-SoVITS 语音”位于独立语音页，与开关边界不相交。
 - “工具与隐私”打开独立能力中心；三页切换、开关、目录和白名单操作均有真实反馈。
@@ -71,4 +74,4 @@
 
 当前实现使用 WinForms/GDI+ 的真实交互控件，而参考图是静态概念稿，因此字体栅格化、玻璃折射和局部装饰细节不会逐像素相同。验收重点是第一视觉印象、区域比例、角色舞台、对白层级、高清素材和完整交互；这些项目均已达到本基线。
 
-任何后续 UI 修改都必须重新生成完整、设置、紧凑和最小窗口截图，并执行 `FunctionalQaHarness` 与 `SettingsUiQaHarness`；语音 Dock、输入区和快捷操作必须通过多尺寸矩阵的子控件可见性、边界、间距与透明底色断言，不得只在单一分辨率下目测。
+任何后续 UI 修改都必须重新生成完整、设置、紧凑和最小窗口截图，并执行 `FunctionalQaHarness` 与 `SettingsUiQaHarness`；语音 Dock、输入区和快捷操作必须通过多尺寸矩阵的子控件可见性、边界、间距、透明底色和 Region 裁切断言。最终候选版还必须在 Windows 125% 或 150% 缩放下截取真实桌面合成画面，不得只依赖 `DrawToBitmap` 或单一分辨率目测。

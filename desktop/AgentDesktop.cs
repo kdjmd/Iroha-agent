@@ -1128,6 +1128,7 @@ namespace IrohaAgentDesktop
             sendButton.AccessibleDescription = "composer-send";
             sendButton.Font = new Font("Segoe Fluent Icons", 17F, FontStyle.Regular);
             ((GlassButton)sendButton).OpaqueBackfill = false;
+            ((GlassButton)sendButton).CircularChrome = true;
             sendButton.BackColor = Color.Transparent;
             sendButton.Click += SendButton_Click;
             inputComposer.Controls.Add(sendButton);
@@ -1958,6 +1959,7 @@ namespace IrohaAgentDesktop
             for (int i = 0; i < quickActionButtons.Count; i++)
             {
                 quickActionButtons[i].SetBounds(gap + i * (width + gap), y, width, height);
+                ApplyRoundedRegion(quickActionButtons[i], Math.Min(14, height / 2));
                 quickActionButtons[i].BringToFront();
             }
             ApplyQuickActionRegion();
@@ -1998,13 +2000,28 @@ namespace IrohaAgentDesktop
             path.CloseFigure();
         }
 
+        private static void ApplyRoundedRegion(Control control, int radius)
+        {
+            if (control == null || control.Width <= 0 || control.Height <= 0) return;
+            using (var path = new GraphicsPath())
+            {
+                AddRoundedRectToPath(
+                    path,
+                    new Rectangle(0, 0, Math.Max(1, control.Width - 1), Math.Max(1, control.Height - 1)),
+                    Math.Max(1, radius));
+                Region oldRegion = control.Region;
+                control.Region = new Region(path);
+                if (oldRegion != null) oldRegion.Dispose();
+            }
+        }
+
         private void LayoutInputComposer()
         {
             if (inputComposer == null || inputBox == null || sendButton == null) return;
-            int buttonSize = Math.Min(60, Math.Max(44, inputComposer.Height - 14));
-            int attachSize = Math.Max(32, Math.Min(38, buttonSize - 8));
-            int rightPadding = inputComposer.Height < 64 ? 8 : 10;
-            int actionGap = inputComposer.Height < 64 ? 9 : 11;
+            int buttonSize = Math.Min(54, Math.Max(42, inputComposer.Height - 16));
+            int attachSize = Math.Max(32, Math.Min(36, buttonSize - 8));
+            int rightPadding = inputComposer.Height < 64 ? 14 : 16;
+            int actionGap = inputComposer.Height < 64 ? 10 : 12;
             int sendX = inputComposer.Width - buttonSize - rightPadding;
             int attachX = sendX - attachSize - actionGap;
             int inputHeight = Math.Max(26, inputComposer.Height - 34);
@@ -2018,11 +2035,11 @@ namespace IrohaAgentDesktop
             if (attachImageButton != null)
             {
                 attachImageButton.SetBounds(attachX, Math.Max(5, (inputComposer.Height - attachSize) / 2), attachSize, attachSize);
-                attachImageButton.Region = null;
+                ApplyCircularRegion(attachImageButton);
                 attachImageButton.BringToFront();
             }
             sendButton.SetBounds(sendX, Math.Max(5, (inputComposer.Height - buttonSize) / 2), buttonSize, buttonSize);
-            sendButton.Region = null;
+            ApplyCircularRegion(sendButton);
             sendButton.BringToFront();
             inputComposer.Invalidate(true);
             UpdateInputPlaceholder();
@@ -5667,7 +5684,13 @@ namespace IrohaAgentDesktop
         {
             if (MinimalChrome)
             {
-                base.OnPaintBackground(pevent);
+                Color backfill = Color.FromArgb(255, 250, 254, 255);
+                var glassParent = Parent as GlassPanel;
+                if (glassParent != null) backfill = Color.FromArgb(255, glassParent.FillColor.R, glassParent.FillColor.G, glassParent.FillColor.B);
+                using (var brush = new SolidBrush(backfill))
+                {
+                    pevent.Graphics.FillRectangle(brush, ClientRectangle);
+                }
                 return;
             }
             if (OpaqueBackfill)
@@ -5843,8 +5866,13 @@ namespace IrohaAgentDesktop
                 size,
                 size);
 
-            Color top = hover ? Color.FromArgb(255, 255, 255, 255) : Color.FromArgb(255, 255, 255, 255);
-            Color bottom = pressed ? Color.FromArgb(255, 199, 241, 248) : Color.FromArgb(255, 226, 248, 252);
+            bool composerSend = string.Equals(AccessibleDescription, "composer-send", StringComparison.OrdinalIgnoreCase);
+            Color top = composerSend
+                ? (pressed ? Color.FromArgb(255, 43, 169, 195) : hover ? Color.FromArgb(255, 111, 221, 229) : Color.FromArgb(255, 91, 207, 219))
+                : Color.FromArgb(255, 255, 255, 255);
+            Color bottom = composerSend
+                ? (pressed ? Color.FromArgb(255, 31, 145, 177) : Color.FromArgb(255, 43, 177, 204))
+                : (pressed ? Color.FromArgb(255, 199, 241, 248) : Color.FromArgb(255, 226, 248, 252));
             using (var shadow = new SolidBrush(Color.FromArgb(24, 46, 128, 160)))
             {
                 g.FillEllipse(shadow, new Rectangle(circle.X + 1, circle.Y + 3, circle.Width, circle.Height));
@@ -5853,9 +5881,14 @@ namespace IrohaAgentDesktop
             {
                 g.FillEllipse(brush, circle);
             }
-            using (var pen = new Pen(Color.FromArgb(150, 176, 225, 236), 1F))
+            using (var pen = new Pen(composerSend ? Color.FromArgb(180, 116, 225, 234) : Color.FromArgb(150, 176, 225, 236), 1F))
             {
                 g.DrawEllipse(pen, circle);
+            }
+            if (composerSend)
+            {
+                DrawButtonContent(g, circle, Color.White);
+                return;
             }
             if (string.Equals(AccessibleDescription, "voice-play", StringComparison.OrdinalIgnoreCase))
             {

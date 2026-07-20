@@ -252,6 +252,7 @@ namespace IrohaAgentDesktop
                 GlassButton glass = action as GlassButton;
                 Assert(quickBar.ClientRectangle.Contains(action.Bounds), label + " contains quick action " + (i + 1), results);
                 Assert(glass != null && action.BackColor.A == 0 && !glass.OpaqueBackfill, label + " quick action " + (i + 1) + " has no rectangular backfill", results);
+                Assert(HasClippedCorners(action), label + " quick action " + (i + 1) + " clips its transparent square corners", results);
                 if (i > 0)
                 {
                     Assert(!quickActions[i - 1].Bounds.IntersectsWith(action.Bounds) && action.Left - quickActions[i - 1].Right >= 6, label + " separates quick actions " + i + " and " + (i + 1), results);
@@ -262,10 +263,14 @@ namespace IrohaAgentDesktop
             TextBox input = GetPrivateField<TextBox>(form, "inputBox");
             Button attach = GetPrivateField<Button>(form, "attachImageButton");
             Button send = GetPrivateField<Button>(form, "sendButton");
+            GlassButton sendGlass = send as GlassButton;
             Assert(composer.ClientRectangle.Contains(input.Bounds) && composer.ClientRectangle.Contains(attach.Bounds) && composer.ClientRectangle.Contains(send.Bounds), label + " contains every composer control", results);
-            Assert(!attach.Bounds.IntersectsWith(send.Bounds) && send.Left - attach.Right >= 8, label + " separates attachment and send controls", results);
+            Assert(!attach.Bounds.IntersectsWith(send.Bounds) && send.Left - attach.Right >= 10, label + " separates attachment and send controls", results);
+            Assert(send.Right + 12 <= composer.ClientRectangle.Right, label + " keeps the send circle clear of the composer edge", results);
             Assert(input.Right + 8 <= attach.Left, label + " keeps input text clear of composer actions", results);
             Assert(attach.BackColor.A == 0 && send.BackColor.A == 0, label + " composer actions have no opaque square backfill", results);
+            Assert(HasClippedCorners(attach) && HasClippedCorners(send), label + " clips attachment and send controls to circles", results);
+            Assert(sendGlass != null && sendGlass.CircularChrome, label + " renders the send action as circular chrome", results);
 
             GlassPanel dock = GetPrivateField<GlassPanel>(form, "voiceDock");
             Button play = GetPrivateField<Button>(form, "testVoiceButton");
@@ -308,6 +313,16 @@ namespace IrohaAgentDesktop
                 }
                 return darkPixels > 6;
             }
+        }
+
+        private static bool HasClippedCorners(Control control)
+        {
+            if (control == null || control.Region == null || control.Width < 4 || control.Height < 4) return false;
+            return !control.Region.IsVisible(0, 0) &&
+                !control.Region.IsVisible(control.Width - 1, 0) &&
+                !control.Region.IsVisible(0, control.Height - 1) &&
+                !control.Region.IsVisible(control.Width - 1, control.Height - 1) &&
+                control.Region.IsVisible(control.Width / 2, control.Height / 2);
         }
 
         private static void DrawControlLayer(Bitmap target, Control ancestor, Control control)
