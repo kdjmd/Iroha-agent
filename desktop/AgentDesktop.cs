@@ -1150,8 +1150,8 @@ namespace IrohaAgentDesktop
             attachImageButton.AccessibleName = "添加附件";
             attachImageButton.AccessibleDescription = "composer-attach";
             attachImageButton.Font = new Font("Segoe Fluent Icons", 12F, FontStyle.Regular);
-            ((GlassButton)attachImageButton).CircularChrome = true;
-            ((GlassButton)attachImageButton).MinimalChrome = false;
+            ((GlassButton)attachImageButton).CircularChrome = false;
+            ((GlassButton)attachImageButton).MinimalChrome = true;
             ((GlassButton)attachImageButton).OpaqueBackfill = false;
             attachImageButton.BackColor = Color.Transparent;
             attachImageButton.Click += AttachImageButton_Click;
@@ -2058,7 +2058,9 @@ namespace IrohaAgentDesktop
             if (attachImageButton != null)
             {
                 attachImageButton.SetBounds(attachX, Math.Max(5, (inputComposer.Height - attachSize) / 2), attachSize, attachSize);
-                ApplyCircularRegion(attachImageButton);
+                Region oldRegion = attachImageButton.Region;
+                attachImageButton.Region = null;
+                if (oldRegion != null) oldRegion.Dispose();
                 attachImageButton.BringToFront();
             }
             sendButton.SetBounds(sendX, Math.Max(5, (inputComposer.Height - buttonSize) / 2), buttonSize, buttonSize);
@@ -5828,6 +5830,14 @@ namespace IrohaAgentDesktop
         {
             if (MinimalChrome)
             {
+                if (string.Equals(AccessibleDescription, "composer-attach", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (var brush = new SolidBrush(Color.FromArgb(250, 254, 255)))
+                    {
+                        pevent.Graphics.FillRectangle(brush, ClientRectangle);
+                    }
+                    return;
+                }
                 Color backfill = Color.FromArgb(255, 250, 254, 255);
                 var glassParent = Parent as GlassPanel;
                 if (glassParent != null) backfill = Color.FromArgb(255, glassParent.FillColor.R, glassParent.FillColor.G, glassParent.FillColor.B);
@@ -5850,6 +5860,12 @@ namespace IrohaAgentDesktop
             }
             if (CircularChrome)
             {
+                if (string.Equals(AccessibleDescription, "composer-send", StringComparison.OrdinalIgnoreCase))
+                {
+                    base.OnPaintBackground(pevent);
+                    PaintParentGlassInterior(pevent.Graphics);
+                    return;
+                }
                 Color backfill = Color.FromArgb(255, 250, 254, 255);
                 var glassParent = Parent as GlassPanel;
                 if (glassParent != null) backfill = Color.FromArgb(255, glassParent.FillColor.R, glassParent.FillColor.G, glassParent.FillColor.B);
@@ -5861,6 +5877,31 @@ namespace IrohaAgentDesktop
             }
             if (!PaintChrome && UiAssetStore.PaintShellSlice(pevent.Graphics, this)) return;
             base.OnPaintBackground(pevent);
+        }
+
+        private void PaintParentGlassInterior(Graphics graphics)
+        {
+            var glassParent = Parent as GlassPanel;
+            if (glassParent == null || !glassParent.PaintChrome || glassParent.BareSurface) return;
+
+            using (var fill = new SolidBrush(glassParent.FillColor))
+            {
+                graphics.FillRectangle(fill, ClientRectangle);
+            }
+
+            Rectangle parentGradient = new Rectangle(
+                0,
+                5 - Top,
+                Math.Max(1, Width),
+                Math.Max(1, glassParent.Height - 11));
+            using (var shine = new LinearGradientBrush(
+                parentGradient,
+                Color.FromArgb(76, 255, 255, 255),
+                Color.FromArgb(10, 255, 255, 255),
+                90F))
+            {
+                graphics.FillRectangle(shine, ClientRectangle);
+            }
         }
 
         protected override void OnMouseEnter(EventArgs e)
@@ -5981,7 +6022,25 @@ namespace IrohaAgentDesktop
                 (Height - hoverSize) / 2,
                 hoverSize,
                 hoverSize);
-            if (hover || pressed)
+            bool composerAttach = string.Equals(AccessibleDescription, "composer-attach", StringComparison.OrdinalIgnoreCase);
+            if (composerAttach)
+            {
+                using (var composerSurface = new SolidBrush(Color.FromArgb(250, 254, 255)))
+                {
+                    g.FillRectangle(composerSurface, ClientRectangle);
+                }
+            }
+            if (composerAttach && (Accent || hover || pressed))
+            {
+                Color feedback = Accent
+                    ? Color.FromArgb(170, 72, 198, 216)
+                    : Color.FromArgb(pressed ? 94 : 58, 72, 198, 216);
+                using (var feedbackBrush = new SolidBrush(feedback))
+                {
+                    g.FillEllipse(feedbackBrush, hoverRect);
+                }
+            }
+            else if (hover || pressed)
             {
                 Color hoverColor = pressed ? Color.FromArgb(178, 204, 237, 245) : Color.FromArgb(142, 220, 244, 249);
                 using (var hoverBrush = new SolidBrush(hoverColor))
@@ -5995,23 +6054,27 @@ namespace IrohaAgentDesktop
 
         private void DrawCircularChrome(Graphics g, Rectangle rect)
         {
-            Color backfill = Color.FromArgb(255, 250, 254, 255);
-            var glassParent = Parent as GlassPanel;
-            if (glassParent != null) backfill = Color.FromArgb(255, glassParent.FillColor.R, glassParent.FillColor.G, glassParent.FillColor.B);
-            using (var clearBrush = new SolidBrush(backfill))
-            {
-                g.FillRectangle(clearBrush, ClientRectangle);
-            }
-
-            int size = Math.Min(rect.Width, rect.Height) - 2;
-            Rectangle circle = new Rectangle(
-                rect.X + (rect.Width - size) / 2,
-                rect.Y + (rect.Height - size) / 2,
-                size,
-                size);
-
             bool composerSend = string.Equals(AccessibleDescription, "composer-send", StringComparison.OrdinalIgnoreCase);
             bool composerAttach = string.Equals(AccessibleDescription, "composer-attach", StringComparison.OrdinalIgnoreCase);
+            if (!composerSend)
+            {
+                Color backfill = Color.FromArgb(255, 250, 254, 255);
+                var glassParent = Parent as GlassPanel;
+                if (glassParent != null) backfill = Color.FromArgb(255, glassParent.FillColor.R, glassParent.FillColor.G, glassParent.FillColor.B);
+                using (var clearBrush = new SolidBrush(backfill))
+                {
+                    g.FillRectangle(clearBrush, ClientRectangle);
+                }
+            }
+
+            int size = composerSend ? Math.Min(Width, Height) - 1 : Math.Min(rect.Width, rect.Height) - 2;
+            Rectangle circle = composerSend
+                ? new Rectangle((Width - size) / 2, (Height - size) / 2, size, size)
+                : new Rectangle(
+                    rect.X + (rect.Width - size) / 2,
+                    rect.Y + (rect.Height - size) / 2,
+                    size,
+                    size);
             bool accentCircle = composerSend || (composerAttach && Accent);
             Color top = accentCircle
                 ? (pressed ? Color.FromArgb(255, 43, 169, 195) : hover ? Color.FromArgb(255, 111, 221, 229) : Color.FromArgb(255, 91, 207, 219))

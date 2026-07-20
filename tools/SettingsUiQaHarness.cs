@@ -271,8 +271,8 @@ namespace IrohaAgentDesktop
             Assert(send.Right + 12 <= composer.ClientRectangle.Right, label + " keeps the send circle clear of the composer edge", results);
             Assert(input.Right + 8 <= attach.Left, label + " keeps input text clear of composer actions", results);
             Assert(attach.BackColor.A == 0 && send.BackColor.A == 0, label + " composer actions have no opaque square backfill", results);
-            Assert(HasClippedCorners(attach) && HasClippedCorners(send), label + " clips attachment and send controls to circles", results);
-            Assert(attachGlass != null && attachGlass.CircularChrome && !attachGlass.MinimalChrome, label + " renders attachment as an independent circular control", results);
+            Assert(attach.Region == null && HasClippedCorners(send), label + " keeps attachment borderless while clipping send to a circle", results);
+            Assert(attachGlass != null && attachGlass.MinimalChrome && !attachGlass.CircularChrome && !attachGlass.OpaqueBackfill, label + " renders attachment as a borderless icon control", results);
             Assert(sendGlass != null && sendGlass.CircularChrome, label + " renders the send action as circular chrome", results);
             Assert(string.Equals(attach.AccessibleDescription, "composer-attach", StringComparison.Ordinal) && attach.Text == "\uE723", label + " attachment action owns only the paperclip glyph", results);
             Assert(string.Equals(send.AccessibleDescription, "composer-send", StringComparison.Ordinal) && string.IsNullOrEmpty(send.Text), label + " send action uses only its custom paper-plane glyph", results);

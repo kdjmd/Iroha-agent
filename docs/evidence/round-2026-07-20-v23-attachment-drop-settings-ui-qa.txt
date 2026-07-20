@@ -20,8 +20,8 @@ PASS: full viewport separates attachment and send controls
 PASS: full viewport keeps the send circle clear of the composer edge
 PASS: full viewport keeps input text clear of composer actions
 PASS: full viewport composer actions have no opaque square backfill
-PASS: full viewport clips attachment and send controls to circles
-PASS: full viewport renders attachment as an independent circular control
+PASS: full viewport keeps attachment borderless while clipping send to a circle
+PASS: full viewport renders attachment as a borderless icon control
 PASS: full viewport renders the send action as circular chrome
 PASS: full viewport attachment action owns only the paperclip glyph
 PASS: full viewport send action uses only its custom paper-plane glyph
@@ -71,8 +71,8 @@ PASS: compact viewport separates attachment and send controls
 PASS: compact viewport keeps the send circle clear of the composer edge
 PASS: compact viewport keeps input text clear of composer actions
 PASS: compact viewport composer actions have no opaque square backfill
-PASS: compact viewport clips attachment and send controls to circles
-PASS: compact viewport renders attachment as an independent circular control
+PASS: compact viewport keeps attachment borderless while clipping send to a circle
+PASS: compact viewport renders attachment as a borderless icon control
 PASS: compact viewport renders the send action as circular chrome
 PASS: compact viewport attachment action owns only the paperclip glyph
 PASS: compact viewport send action uses only its custom paper-plane glyph
@@ -105,8 +105,8 @@ PASS: minimum viewport separates attachment and send controls
 PASS: minimum viewport keeps the send circle clear of the composer edge
 PASS: minimum viewport keeps input text clear of composer actions
 PASS: minimum viewport composer actions have no opaque square backfill
-PASS: minimum viewport clips attachment and send controls to circles
-PASS: minimum viewport renders attachment as an independent circular control
+PASS: minimum viewport keeps attachment borderless while clipping send to a circle
+PASS: minimum viewport renders attachment as a borderless icon control
 PASS: minimum viewport renders the send action as circular chrome
 PASS: minimum viewport attachment action owns only the paperclip glyph
 PASS: minimum viewport send action uses only its custom paper-plane glyph
@@ -136,8 +136,8 @@ PASS: 1024x576 separates attachment and send controls
 PASS: 1024x576 keeps the send circle clear of the composer edge
 PASS: 1024x576 keeps input text clear of composer actions
 PASS: 1024x576 composer actions have no opaque square backfill
-PASS: 1024x576 clips attachment and send controls to circles
-PASS: 1024x576 renders attachment as an independent circular control
+PASS: 1024x576 keeps attachment borderless while clipping send to a circle
+PASS: 1024x576 renders attachment as a borderless icon control
 PASS: 1024x576 renders the send action as circular chrome
 PASS: 1024x576 attachment action owns only the paperclip glyph
 PASS: 1024x576 send action uses only its custom paper-plane glyph
@@ -166,8 +166,8 @@ PASS: 1088x612 separates attachment and send controls
 PASS: 1088x612 keeps the send circle clear of the composer edge
 PASS: 1088x612 keeps input text clear of composer actions
 PASS: 1088x612 composer actions have no opaque square backfill
-PASS: 1088x612 clips attachment and send controls to circles
-PASS: 1088x612 renders attachment as an independent circular control
+PASS: 1088x612 keeps attachment borderless while clipping send to a circle
+PASS: 1088x612 renders attachment as a borderless icon control
 PASS: 1088x612 renders the send action as circular chrome
 PASS: 1088x612 attachment action owns only the paperclip glyph
 PASS: 1088x612 send action uses only its custom paper-plane glyph
@@ -196,8 +196,8 @@ PASS: 1100x620 separates attachment and send controls
 PASS: 1100x620 keeps the send circle clear of the composer edge
 PASS: 1100x620 keeps input text clear of composer actions
 PASS: 1100x620 composer actions have no opaque square backfill
-PASS: 1100x620 clips attachment and send controls to circles
-PASS: 1100x620 renders attachment as an independent circular control
+PASS: 1100x620 keeps attachment borderless while clipping send to a circle
+PASS: 1100x620 renders attachment as a borderless icon control
 PASS: 1100x620 renders the send action as circular chrome
 PASS: 1100x620 attachment action owns only the paperclip glyph
 PASS: 1100x620 send action uses only its custom paper-plane glyph
@@ -229,8 +229,8 @@ PASS: 1280x720 separates attachment and send controls
 PASS: 1280x720 keeps the send circle clear of the composer edge
 PASS: 1280x720 keeps input text clear of composer actions
 PASS: 1280x720 composer actions have no opaque square backfill
-PASS: 1280x720 clips attachment and send controls to circles
-PASS: 1280x720 renders attachment as an independent circular control
+PASS: 1280x720 keeps attachment borderless while clipping send to a circle
+PASS: 1280x720 renders attachment as a borderless icon control
 PASS: 1280x720 renders the send action as circular chrome
 PASS: 1280x720 attachment action owns only the paperclip glyph
 PASS: 1280x720 send action uses only its custom paper-plane glyph
@@ -262,8 +262,8 @@ PASS: 1366x768 separates attachment and send controls
 PASS: 1366x768 keeps the send circle clear of the composer edge
 PASS: 1366x768 keeps input text clear of composer actions
 PASS: 1366x768 composer actions have no opaque square backfill
-PASS: 1366x768 clips attachment and send controls to circles
-PASS: 1366x768 renders attachment as an independent circular control
+PASS: 1366x768 keeps attachment borderless while clipping send to a circle
+PASS: 1366x768 renders attachment as a borderless icon control
 PASS: 1366x768 renders the send action as circular chrome
 PASS: 1366x768 attachment action owns only the paperclip glyph
 PASS: 1366x768 send action uses only its custom paper-plane glyph
@@ -295,8 +295,8 @@ PASS: 1450x816 separates attachment and send controls
 PASS: 1450x816 keeps the send circle clear of the composer edge
 PASS: 1450x816 keeps input text clear of composer actions
 PASS: 1450x816 composer actions have no opaque square backfill
-PASS: 1450x816 clips attachment and send controls to circles
-PASS: 1450x816 renders attachment as an independent circular control
+PASS: 1450x816 keeps attachment borderless while clipping send to a circle
+PASS: 1450x816 renders attachment as a borderless icon control
 PASS: 1450x816 renders the send action as circular chrome
 PASS: 1450x816 attachment action owns only the paperclip glyph
 PASS: 1450x816 send action uses only its custom paper-plane glyph
@@ -328,8 +328,8 @@ PASS: 1672x941 separates attachment and send controls
 PASS: 1672x941 keeps the send circle clear of the composer edge
 PASS: 1672x941 keeps input text clear of composer actions
 PASS: 1672x941 composer actions have no opaque square backfill
-PASS: 1672x941 clips attachment and send controls to circles
-PASS: 1672x941 renders attachment as an independent circular control
+PASS: 1672x941 keeps attachment borderless while clipping send to a circle
+PASS: 1672x941 renders attachment as a borderless icon control
 PASS: 1672x941 renders the send action as circular chrome
 PASS: 1672x941 attachment action owns only the paperclip glyph
 PASS: 1672x941 send action uses only its custom paper-plane glyph
@@ -361,8 +361,8 @@ PASS: 1920x1080 separates attachment and send controls
 PASS: 1920x1080 keeps the send circle clear of the composer edge
 PASS: 1920x1080 keeps input text clear of composer actions
 PASS: 1920x1080 composer actions have no opaque square backfill
-PASS: 1920x1080 clips attachment and send controls to circles
-PASS: 1920x1080 renders attachment as an independent circular control
+PASS: 1920x1080 keeps attachment borderless while clipping send to a circle
+PASS: 1920x1080 renders attachment as a borderless icon control
 PASS: 1920x1080 renders the send action as circular chrome
 PASS: 1920x1080 attachment action owns only the paperclip glyph
 PASS: 1920x1080 send action uses only its custom paper-plane glyph
