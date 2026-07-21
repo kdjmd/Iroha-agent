@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace IrohaAgentDesktop
@@ -69,6 +70,11 @@ namespace IrohaAgentDesktop
                 settings.VoiceServerUrl = "http://127.0.0.1:" + occupiedPortNumber;
                 Assert((int)InvokePrivateMethod(form, "GetConfiguredVoicePort") == occupiedPortNumber, "configured local voice port is preserved", results);
                 settings.VoiceServerUrl = originalVoiceUrl;
+                object[] launcherArguments = { null };
+                string launcherPath = (string)InvokePrivateMethod(form, "EnsureVoiceLauncher", launcherArguments);
+                string launcherScript = File.ReadAllText(launcherPath, Encoding.UTF8);
+                Assert(launcherScript.Contains("open(os.devnull") && launcherScript.Contains("sys.stdout = sink") && launcherScript.Contains("sys.stderr = sink"), "voice launcher detaches from parent pipes without persisting conversation logs", results);
+                Assert(launcherScript.Contains("sys.argv = [api_path] + sys.argv[3:]"), "voice launcher forwards GPT-SoVITS arguments after its private paths", results);
 
                 AvatarControl avatar = GetPrivateField<AvatarControl>(form, "avatar");
                 Timer timer = GetPrivateField<Timer>(avatar, "timer");
@@ -85,11 +91,59 @@ namespace IrohaAgentDesktop
                 Button voice = GetPrivateField<Button>(form, "testVoiceButton");
                 GlassPanel dialogue = GetPrivateField<GlassPanel>(form, "dialoguePanel");
                 VnDialogueTextControl dialogueText = GetPrivateField<VnDialogueTextControl>(form, "dialogueTextBox");
+                DialogueIconButton dialogueDetail = GetPrivateField<DialogueIconButton>(form, "dialogueDetailButton");
+                DialogueLoadingControl dialogueLoading = GetPrivateField<DialogueLoadingControl>(form, "dialogueLoadingControl");
                 Assert(input.Visible && send.Visible && voice.Visible, "primary composer and voice playback visible", results);
                 Assert(dialogue.Visible && !string.IsNullOrWhiteSpace(dialogueText.Text), "VN dialogue populated", results);
+                Assert(dialogueDetail.Visible && dialogue.ClientRectangle.Contains(dialogueDetail.Bounds), "dialogue detail action is visible and contained", results);
+                Assert(!dialogueText.Bounds.IntersectsWith(dialogueDetail.Bounds), "dialogue text clears the detail action", results);
+                Assert(dialogueLoading.Bounds == dialogueText.Bounds, "loading feedback owns the dialogue content area", results);
                 Assert(IsInside(form.ClientRectangle, input) && IsInside(form.ClientRectangle, send), "primary controls inside standard viewport", results);
                 Assert(inputComposer.AllowDrop && input.AllowDrop && inputPlaceholder.AllowDrop && attach.AllowDrop && send.AllowDrop, "composer supports file drop on every visible surface", results);
                 Assert(string.Equals(attach.AccessibleDescription, "composer-attach", StringComparison.Ordinal) && attach.Text == "\uE723", "attachment button is paperclip-only", results);
+
+                string fullReply = "今天我们完整做三件事。第一，保留 3 个关键条件。第二，逐句检查全部细节。第三，把最终结果清楚地交给你。\n所有正文都应能在详情窗中滚动查看，不会被对白框截断。";
+                InvokePrivateMethod(form, "BeginReplyLoading", "正在连接模型");
+                Application.DoEvents();
+                Assert(dialogueLoading.Visible && dialogueLoading.IsLoading && !dialogueText.Visible && !dialogueDetail.Visible, "loading feedback replaces stale dialogue while waiting", results);
+                InvokePrivateMethod(form, "UpdateReplyLoading", "正在核对完整日语语音");
+                Assert(dialogueLoading.AccessibleDescription.Contains("完整日语语音"), "loading feedback exposes the active phase", results);
+                InvokePrivateMethod(form, "ShowDialogueText", fullReply);
+                Application.DoEvents();
+                Assert(!dialogueLoading.Visible && dialogueText.Visible && dialogueDetail.Visible, "reply restores dialogue and detail action", results);
+                Assert(string.Equals(GetPrivateField<string>(form, "currentDialogueFullText"), fullReply, StringComparison.Ordinal), "full reply is preserved independently of clipped preview", results);
+                InvokeControlClick(dialogueDetail);
+                Application.DoEvents();
+                DialogueDetailForm detailForm = GetPrivateField<DialogueDetailForm>(form, "dialogueDetailForm");
+                RichTextBox detailReply = GetPrivateField<RichTextBox>(detailForm, "replyBox");
+                Assert(detailForm.Visible && detailReply.ScrollBars == RichTextBoxScrollBars.Vertical, "detail window provides native wheel scrolling", results);
+                Assert(string.Equals(detailReply.Text, fullReply, StringComparison.Ordinal), "detail window shows the complete reply", results);
+                detailForm.Close();
+                Application.DoEvents();
+
+                string unicodeReply = "表情：ðŸ˜Š 和樱花 🌸\n一起写代码 👩‍💻，进度 50% + 2 = 52。";
+                string normalizedUnicodeReply = UnicodeText.NormalizeForDisplay(unicodeReply);
+                Assert(normalizedUnicodeReply.Contains("😊") && normalizedUnicodeReply.Contains("🌸") && normalizedUnicodeReply.Contains("👩‍💻"), "display text repairs mojibake and preserves complete emoji sequences", results);
+                Assert(!UnicodeText.HasInvalidSurrogate(normalizedUnicodeReply), "normalized display text never contains orphan UTF-16 surrogates", results);
+                List<string> unicodeElements = UnicodeText.GetTextElements("A👩‍💻🌸B");
+                Assert(unicodeElements.Count == 4 && unicodeElements[1] == "👩‍💻", "typewriter segmentation keeps joined emoji as one text element", results);
+                Task typedUnicode = (Task)InvokePrivateMethod(form, "AddAssistantLineTypedAsync", unicodeReply, 1);
+                typedUnicode.GetAwaiter().GetResult();
+                Assert(string.Equals(dialogueText.Text, normalizedUnicodeReply, StringComparison.Ordinal), "VN typewriter renders emoji and special symbols without corruption", results);
+                RichTextBox chatLog = GetPrivateField<RichTextBox>(form, "chatLog");
+                Assert(chatLog.Text.Contains(normalizedUnicodeReply), "chat history preserves the same normalized Unicode reply", results);
+
+                string speechSafe = UnicodeText.NormalizeForSpeech("こんにちは😊✨ 50% + 2 = 52 & OK");
+                Assert(speechSafe.Contains("こんにちは") && speechSafe.Contains("パーセント") && speechSafe.Contains("プラス") && speechSafe.Contains("イコール") && speechSafe.Contains("アンド"), "speech normalization converts common symbols into natural Japanese readings", results);
+                Assert(!speechSafe.Contains("😊") && !speechSafe.Contains("✨") && !UnicodeText.HasInvalidSurrogate(speechSafe), "speech normalization removes non-pronounceable emoji safely", results);
+
+                string prompt = (string)InvokePrivateMethod(form, "BuildSystemPrompt");
+                Assert(prompt.Contains("完整、逐句、忠实日语") && !prompt.Contains("不要超过中文回复长度的一半"), "model contract requires full Japanese speech", results);
+                string completeChinese = "计划分三步。第一步保留 3 个条件。第二步检查 12 项数据。第三步在今天完成。";
+                string completeJapanese = "計画は三つの段階に分かれます。第一段階では3つの条件を残します。第二段階では12項目のデータを確認します。第三段階は今日中に完了します。";
+                Assert((bool)InvokePrivateMethod(form, "IsCompleteJapaneseSpeech", completeChinese, completeJapanese), "complete Japanese speech passes integrity validation", results);
+                Assert(!(bool)InvokePrivateMethod(form, "IsCompleteJapaneseSpeech", completeChinese, "はい。"), "short placeholder speech is rejected", results);
+                Assert(!(bool)InvokePrivateMethod(form, "IsCompleteJapaneseSpeech", completeChinese, "計画を三つの段階で進めます。"), "speech missing source numbers is rejected", results);
 
                 string attachmentPath = Path.Combine(Path.GetTempPath(), "iroha-agent-attachment-qa-" + Guid.NewGuid().ToString("N") + ".txt");
                 string unsupportedPath = Path.ChangeExtension(attachmentPath, ".exe");

@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 namespace IrohaAgentDesktop
@@ -158,6 +162,87 @@ namespace IrohaAgentDesktop
                 leakedKey);
             Assert(redacted.IndexOf(leakedKey, StringComparison.Ordinal) < 0, "provider errors redact the active API key");
             Assert(redacted.IndexOf("[已隐藏]", StringComparison.Ordinal) >= 0, "redacted provider errors remain understandable");
+
+            RunToolRoundFinalizationChecks();
+        }
+
+        private static void RunToolRoundFinalizationChecks()
+        {
+            var handler = new ToolLoopHandler();
+            using (var httpClient = new HttpClient(handler))
+            {
+                var client = new ModelApiClient(httpClient);
+                var settings = BuildSettings("custom");
+                settings.ApiKey = "";
+                settings.BaseUrl = "https://qa.local/v1";
+                settings.Model = "qa-tool-model";
+                settings.ToolsEnabled = true;
+                settings.ToolBundleAEnabled = true;
+
+                var statuses = new List<string>();
+                var context = new AgentToolExecutionContext(settings) { StatusHandler = status => statuses.Add(status) };
+                var session = new AgentToolSession(new AgentToolRegistry(), context);
+                var history = new List<Dictionary<string, string>>
+                {
+                    new Dictionary<string, string> { { "role", "user" }, { "content", "请计算 1 + 1。" } }
+                };
+
+                string response = client.RequestWithToolsAsync(
+                    settings,
+                    "请以严格 JSON 返回 zh、ja、mood。",
+                    history,
+                    session,
+                    TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+
+                Assert(response.IndexOf("计算结果是 2", StringComparison.Ordinal) >= 0,
+                    "tool loop returns a final answer after the fourth execution round");
+                Assert(handler.RequestBodies.Count == AgentToolSession.MaxRounds + 1,
+                    "tool loop performs exactly one no-tools finalization request");
+                for (int i = 0; i < AgentToolSession.MaxRounds; i++)
+                {
+                    Assert(handler.RequestBodies[i].IndexOf("\"tools\"", StringComparison.Ordinal) >= 0,
+                        "tool round " + (i + 1) + " keeps native tool definitions");
+                }
+                string finalRequest = handler.RequestBodies[handler.RequestBodies.Count - 1];
+                Assert(finalRequest.IndexOf("\"tools\"", StringComparison.Ordinal) < 0,
+                    "finalization request disables further tool calls");
+                Assert(finalRequest.IndexOf("calculator", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    finalRequest.IndexOf("计算完成", StringComparison.Ordinal) >= 0,
+                    "finalization request carries the completed tool result");
+
+                int calculatorExecutions = 0;
+                bool reportedFinalization = false;
+                foreach (string status in statuses)
+                {
+                    if (status == "正在计算") calculatorExecutions++;
+                    if (status == "工具步骤已完成，正在整理最终回复") reportedFinalization = true;
+                }
+                Assert(calculatorExecutions == 1,
+                    "identical repeated tool calls reuse the first result instead of executing again");
+                Assert(reportedFinalization,
+                    "tool loop reports the final response stage to the UI");
+
+                var firstCall = new AgentToolCall
+                {
+                    Name = "CALCULATOR",
+                    Arguments = new Dictionary<string, object>
+                    {
+                        { "mode", "expression" },
+                        { "expression", "1+1" }
+                    }
+                };
+                var reorderedCall = new AgentToolCall
+                {
+                    Name = "calculator",
+                    Arguments = new Dictionary<string, object>
+                    {
+                        { "expression", "1+1" },
+                        { "MODE", "expression" }
+                    }
+                };
+                Assert(client.BuildToolCallFingerprint(firstCall) == client.BuildToolCallFingerprint(reorderedCall),
+                    "tool-call deduplication ignores tool and argument key casing/order");
+            }
         }
 
         private static void RunCredentialStorageChecks()
@@ -312,6 +397,93 @@ namespace IrohaAgentDesktop
                 if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase)) return args[i + 1];
             }
             return null;
+        }
+
+        private sealed class ToolLoopHandler : HttpMessageHandler
+        {
+            private readonly JavaScriptSerializer serializer = new JavaScriptSerializer();
+
+            public List<string> RequestBodies { get; private set; }
+
+            public ToolLoopHandler()
+            {
+                RequestBodies = new List<string>();
+            }
+
+            protected override async Task<HttpResponseMessage> SendAsync(
+                HttpRequestMessage request,
+                CancellationToken cancellationToken)
+            {
+                string body = request.Content == null ? "" : await request.Content.ReadAsStringAsync();
+                RequestBodies.Add(body);
+                string responseBody = RequestBodies.Count <= AgentToolSession.MaxRounds
+                    ? BuildToolCallResponse(RequestBodies.Count)
+                    : BuildFinalResponse();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
+                };
+            }
+
+            private string BuildToolCallResponse(int round)
+            {
+                string arguments = serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "mode", "expression" },
+                    { "expression", "1+1" }
+                });
+                return serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "choices", new object[]
+                        {
+                            new Dictionary<string, object>
+                            {
+                                { "message", new Dictionary<string, object>
+                                    {
+                                        { "content", "" },
+                                        { "tool_calls", new object[]
+                                            {
+                                                new Dictionary<string, object>
+                                                {
+                                                    { "id", "qa-call-" + round },
+                                                    { "type", "function" },
+                                                    { "function", new Dictionary<string, object>
+                                                        {
+                                                            { "name", "calculator" },
+                                                            { "arguments", arguments }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            private string BuildFinalResponse()
+            {
+                string content = serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "zh", "计算结果是 2。" },
+                    { "ja", "計算結果は2です。" },
+                    { "mood", "happy" }
+                });
+                return serializer.Serialize(new Dictionary<string, object>
+                {
+                    { "choices", new object[]
+                        {
+                            new Dictionary<string, object>
+                            {
+                                { "message", new Dictionary<string, object> { { "content", content } } }
+                            }
+                        }
+                    }
+                });
+            }
         }
     }
 }

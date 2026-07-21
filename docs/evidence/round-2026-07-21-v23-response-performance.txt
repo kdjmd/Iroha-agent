@@ -1,0 +1,34 @@
+Iroha Agent v2.3.0 response and package optimization evidence
+Date: 2026-07-21
+
+Startup benchmark
+- Method: 7 launches of desktop/dist/IrohaAgent.exe with voice, memory, and tools disabled.
+- Previous median: 411.7 ms
+- New samples: 374.2, 308.4, 309.1, 307.4, 327.3, 328.1, 311.4 ms
+- New median: 311.4 ms
+- Improvement: 24.4%
+
+Portable package benchmark
+- Previous ZIP: 32,166,638 bytes
+- New ZIP: 9,895,213 bytes
+- Reduction: 22,271,425 bytes (69.2%)
+- Runtime visual assets: 20 allowlisted files, 7,659,483 bytes
+- No image was recompressed or downscaled. The build only omits assets unused by the current StageMode UI.
+
+Extracted package smoke test
+- Window visible: yes
+- Window responsive: yes
+- Startup to visible window: 374.1 ms
+- Packaged visual asset count: 20
+- Portable ZIP SHA-256: 8c661d718658cd21b7c4b25f76e55c6d3e48dc58d860868096413eead5066e56
+
+GPT-SoVITS full-reply benchmark
+- Same complete multi-sentence Japanese source was sent to both configurations.
+- Previous cut2 / batch 1: 40.02 s generation, 28.36 s WAV, valid RIFF/WAVE
+- Optimized cut5 / batch 4 / parallel infer: 21.59 s generation, 24.12 s WAV, valid RIFF/WAVE
+- Application end-to-end run: 24.15 s generation, 25.48 s WAV, -1.1 dBFS normalized peak
+- SoundPlayer playback, non-silence validation, and temporary-file cleanup passed.
+
+Automated regression
+- Standard suite: 744 passed, 0 failed
+- Full-reply real voice suite: 10 passed, 0 failed

@@ -84,63 +84,70 @@ foreach ($packageDll in $packageDlls) {
 }
 
 $characterSource = Join-Path $projectRoot "assets\character"
-$assetSource = Join-Path $characterSource "frames"
 $assetTarget = Join-Path $dist "assets"
 $characterTarget = Join-Path $assetTarget "character"
-$frameTarget = Join-Path $assetTarget "character\frames"
 $expressionSource = Join-Path $characterSource "expressions"
 $expressionTarget = Join-Path $assetTarget "character\expressions"
 $uiSource = Join-Path $projectRoot "assets\ui"
 $uiTarget = Join-Path $assetTarget "ui"
-if (Test-Path -LiteralPath $assetSource) {
-  $resolvedTarget = [System.IO.Path]::GetFullPath($frameTarget)
-  $resolvedDist = [System.IO.Path]::GetFullPath($dist)
-  if (-not $resolvedTarget.StartsWith($resolvedDist, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Asset target escapes dist: $resolvedTarget"
+$resolvedAssetTarget = [System.IO.Path]::GetFullPath($assetTarget)
+$resolvedDist = [System.IO.Path]::GetFullPath($dist)
+if (-not $resolvedAssetTarget.StartsWith($resolvedDist, [System.StringComparison]::OrdinalIgnoreCase)) {
+  throw "Asset target escapes dist: $resolvedAssetTarget"
+}
+if (Test-Path -LiteralPath $assetTarget) {
+  Remove-Item -LiteralPath $assetTarget -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $characterTarget | Out-Null
+New-Item -ItemType Directory -Force -Path $expressionTarget | Out-Null
+New-Item -ItemType Directory -Force -Path $uiTarget | Out-Null
+
+function Copy-RequiredAsset([string]$sourcePath, [string]$targetPath) {
+  if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+    throw "Required runtime asset is missing: $sourcePath"
   }
-  if (Test-Path -LiteralPath $assetTarget) {
-    Remove-Item -LiteralPath $assetTarget -Recurse -Force
-  }
-  New-Item -ItemType Directory -Force -Path $frameTarget | Out-Null
-  Get-ChildItem -LiteralPath $assetSource -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $frameTarget -Force
-  }
+  Copy-Item -LiteralPath $sourcePath -Destination $targetPath -Force
 }
 
-if (Test-Path -LiteralPath $characterSource) {
-  $resolvedTarget = [System.IO.Path]::GetFullPath($characterTarget)
-  $resolvedDist = [System.IO.Path]::GetFullPath($dist)
-  if (-not $resolvedTarget.StartsWith($resolvedDist, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Character asset target escapes dist: $resolvedTarget"
-  }
-  New-Item -ItemType Directory -Force -Path $characterTarget | Out-Null
-  Get-ChildItem -LiteralPath $characterSource -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $characterTarget -Force
-  }
+$characterFiles = @("iroha-portrait.png")
+$expressionFiles = @(
+  "iroha-blink-closed.png",
+  "iroha-blink-half.png",
+  "iroha-speak-open.png",
+  "iroha-speak-small.png"
+)
+$uiFiles = @(
+  "vn-room-bg.png",
+  "iroha-chibi-card-v2.png",
+  "official-iroha-real.png",
+  "official-character-01.png",
+  "official-character-02.png",
+  "official-character-03.png",
+  "official-character-04.png",
+  "official-character-05.png",
+  "official-character-06.png",
+  "official-character-07.png",
+  "official-character-08.png",
+  "official-character-09.png",
+  "official-character-10.png",
+  "official-character-11.png",
+  "official-character-12.png"
+)
+
+foreach ($file in $characterFiles) {
+  Copy-RequiredAsset (Join-Path $characterSource $file) (Join-Path $characterTarget $file)
+}
+foreach ($file in $expressionFiles) {
+  Copy-RequiredAsset (Join-Path $expressionSource $file) (Join-Path $expressionTarget $file)
+}
+foreach ($file in $uiFiles) {
+  Copy-RequiredAsset (Join-Path $uiSource $file) (Join-Path $uiTarget $file)
 }
 
-if (Test-Path -LiteralPath $expressionSource) {
-  $resolvedTarget = [System.IO.Path]::GetFullPath($expressionTarget)
-  $resolvedDist = [System.IO.Path]::GetFullPath($dist)
-  if (-not $resolvedTarget.StartsWith($resolvedDist, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Expression asset target escapes dist: $resolvedTarget"
-  }
-  New-Item -ItemType Directory -Force -Path $expressionTarget | Out-Null
-  Get-ChildItem -LiteralPath $expressionSource -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $expressionTarget -Force
-  }
-}
-
-if (Test-Path -LiteralPath $uiSource) {
-  $resolvedTarget = [System.IO.Path]::GetFullPath($uiTarget)
-  $resolvedDist = [System.IO.Path]::GetFullPath($dist)
-  if (-not $resolvedTarget.StartsWith($resolvedDist, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "UI asset target escapes dist: $resolvedTarget"
-  }
-  New-Item -ItemType Directory -Force -Path $uiTarget | Out-Null
-  Get-ChildItem -LiteralPath $uiSource -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $uiTarget -Force
-  }
+$expectedAssetCount = $characterFiles.Count + $expressionFiles.Count + $uiFiles.Count
+$actualAssetCount = @(Get-ChildItem -LiteralPath $assetTarget -Recurse -File).Count
+if ($actualAssetCount -ne $expectedAssetCount) {
+  throw "Runtime asset allowlist mismatch: expected $expectedAssetCount files, found $actualAssetCount"
 }
 
 $launcher = Join-Path $root "Start-IrohaAgent.bat"
