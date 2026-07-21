@@ -159,6 +159,8 @@ Run-Harness $settingsUiExe @(
   "--voice-screenshot", (Join-Path $output "settings-voice.png"),
   "--compact-screenshot", (Join-Path $output "settings-compact-main.png"),
   "--narrow-screenshot", (Join-Path $output "settings-narrow-main.png"),
+  "--loading-screenshot", (Join-Path $output "dialogue-loading.png"),
+  "--detail-screenshot", (Join-Path $output "dialogue-detail.png"),
   "--tool-screenshot", (Join-Path $output "settings-tools.png"),
   "--tool-privacy-screenshot", (Join-Path $output "settings-tools-privacy.png"),
   "--tool-skills-screenshot", (Join-Path $output "settings-tools-skills.png"),

@@ -233,7 +233,7 @@ namespace IrohaAgentDesktop
                 { "data", Data }
             });
             if (json.Length <= MaxModelCharacters) return json;
-            string clipped = json.Substring(0, MaxModelCharacters - 256);
+            string clipped = UnicodeText.TruncateUtf16(json, MaxModelCharacters - 256);
             return Serializer.Serialize(new Dictionary<string, object>
             {
                 { "ok", Success },
@@ -285,6 +285,11 @@ namespace IrohaAgentDesktop
         public IList<AgentToolDefinition> EnabledDefinitions
         {
             get { return registry.GetEnabled(context.Settings); }
+        }
+
+        public void ReportStatus(string status)
+        {
+            context.ReportStatus(status);
         }
 
         public async Task<AgentToolResult> ExecuteAsync(AgentToolCall call)
@@ -661,8 +666,8 @@ namespace IrohaAgentDesktop
         public static string SafeError(Exception exception)
         {
             string message = exception == null ? "未知错误" : (exception.Message ?? "未知错误");
-            message = message.Replace("\r", " ").Replace("\n", " ").Trim();
-            if (message.Length > 220) message = message.Substring(0, 220) + "…";
+            message = UnicodeText.NormalizeForDisplay(message).Replace("\r", " ").Replace("\n", " ").Trim();
+            if (message.Length > 220) message = UnicodeText.TruncateUtf16(message, 220) + "…";
             return message.Length == 0 ? "操作未完成" : message;
         }
     }

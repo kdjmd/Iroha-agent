@@ -435,7 +435,8 @@ namespace IrohaAgentDesktop
             foreach (KeyValuePair<string, object> item in arguments)
             {
                 string value = Convert.ToString(item.Value) ?? "";
-                if (value.Length > 800) value = value.Substring(0, 800) + "…";
+                value = UnicodeText.NormalizeForDisplay(value);
+                if (value.Length > 800) value = UnicodeText.TruncateUtf16(value, 800) + "…";
                 builder.Append(item.Key).Append("：").AppendLine(value);
             }
             return builder.ToString();

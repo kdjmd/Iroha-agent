@@ -47,13 +47,15 @@ namespace IrohaAgentDesktop
             string mainShot = GetArgument(args, "--main-screenshot");
             string compactShot = GetArgument(args, "--compact-screenshot");
             string narrowShot = GetArgument(args, "--narrow-screenshot");
+            string loadingShot = GetArgument(args, "--loading-screenshot");
+            string detailShot = GetArgument(args, "--detail-screenshot");
             string toolShot = GetArgument(args, "--tool-screenshot");
             string toolPrivacyShot = GetArgument(args, "--tool-privacy-screenshot");
             string toolSkillsShot = GetArgument(args, "--tool-skills-screenshot");
             string report = GetArgument(args, "--report");
             int viewportWidth = GetIntArgument(args, "--width", 1280);
             int viewportHeight = GetIntArgument(args, "--height", 720);
-            if (string.IsNullOrWhiteSpace(modelShot) || string.IsNullOrWhiteSpace(voiceShot) || string.IsNullOrWhiteSpace(mainShot) || string.IsNullOrWhiteSpace(compactShot) || string.IsNullOrWhiteSpace(narrowShot) || string.IsNullOrWhiteSpace(toolShot) || string.IsNullOrWhiteSpace(toolPrivacyShot) || string.IsNullOrWhiteSpace(toolSkillsShot) || string.IsNullOrWhiteSpace(report))
+            if (string.IsNullOrWhiteSpace(modelShot) || string.IsNullOrWhiteSpace(voiceShot) || string.IsNullOrWhiteSpace(mainShot) || string.IsNullOrWhiteSpace(compactShot) || string.IsNullOrWhiteSpace(narrowShot) || string.IsNullOrWhiteSpace(loadingShot) || string.IsNullOrWhiteSpace(detailShot) || string.IsNullOrWhiteSpace(toolShot) || string.IsNullOrWhiteSpace(toolPrivacyShot) || string.IsNullOrWhiteSpace(toolSkillsShot) || string.IsNullOrWhiteSpace(report))
             {
                 throw new ArgumentException("main, settings, compact, narrow, tool screenshots and --report are required");
             }
@@ -90,6 +92,33 @@ namespace IrohaAgentDesktop
                 Assert(quickActionsHaveCleanCaptions, "quick action buttons have no clipped secondary captions", results);
                 AssertBottomLayout(form, results, "full viewport", true);
                 Capture(form, mainShot);
+
+                InvokePrivateMethod(form, "BeginReplyLoading", "正在调用模型与工具");
+                WaitForPaint();
+                DialogueLoadingControl loading = GetPrivateField<DialogueLoadingControl>(form, "dialogueLoadingControl");
+                Assert(loading.Visible && loading.IsLoading, "dialogue loading animation is active", results);
+                Capture(form, loadingShot);
+                var longReplyBuilder = new StringBuilder();
+                for (int paragraph = 1; paragraph <= 9; paragraph++)
+                {
+                    if (paragraph > 1) longReplyBuilder.AppendLine().AppendLine();
+                    longReplyBuilder.Append("第").Append(paragraph).Append("部分会完整保留原文中的目标、数字与限制条件，不会因为对白框高度而省略。")
+                        .Append("详情窗会继续显示余下内容，让较长回复保持清晰的阅读节奏，并确保鼠标滚轮可以自然浏览全文。")
+                        .Append("主对白框负责当前情绪与重点，详情窗负责完整内容，两者不会互相遮挡。");
+                }
+                string longReply = longReplyBuilder.ToString();
+                InvokePrivateMethod(form, "ShowDialogueText", longReply);
+                DialogueIconButton detailButton = GetPrivateField<DialogueIconButton>(form, "dialogueDetailButton");
+                InvokeControlClick(detailButton);
+                WaitForPaint();
+                DialogueDetailForm detailForm = GetPrivateField<DialogueDetailForm>(form, "dialogueDetailForm");
+                RichTextBox detailReply = GetPrivateField<RichTextBox>(detailForm, "replyBox");
+                Assert(detailForm.Visible, "dialogue detail window opens", results);
+                Point finalCharacter = detailReply.GetPositionFromCharIndex(Math.Max(0, detailReply.TextLength - 1));
+                Assert(detailReply.ScrollBars == RichTextBoxScrollBars.Vertical && finalCharacter.Y > detailReply.ClientSize.Height, "long detail reply has a vertical scroll range", results);
+                CaptureScreen(detailForm, detailShot);
+                detailForm.Close();
+                WaitForPaint();
 
                 InvokePrivateMethod(form, "ToggleSettingsDrawer");
                 WaitForPaint();
@@ -259,6 +288,15 @@ namespace IrohaAgentDesktop
                 }
             }
 
+            GlassPanel dialogue = GetPrivateField<GlassPanel>(form, "dialoguePanel");
+            VnDialogueTextControl dialogueText = GetPrivateField<VnDialogueTextControl>(form, "dialogueTextBox");
+            DialogueIconButton dialogueDetail = GetPrivateField<DialogueIconButton>(form, "dialogueDetailButton");
+            DialogueLoadingControl dialogueLoading = GetPrivateField<DialogueLoadingControl>(form, "dialogueLoadingControl");
+            Assert(dialogue.ClientRectangle.Contains(dialogueText.Bounds), label + " contains dialogue preview", results);
+            Assert(dialogue.ClientRectangle.Contains(dialogueDetail.Bounds), label + " contains dialogue detail action", results);
+            Assert(!dialogueText.Bounds.IntersectsWith(dialogueDetail.Bounds), label + " separates dialogue text and detail action", results);
+            Assert(dialogueLoading.Bounds == dialogueText.Bounds, label + " aligns loading feedback with dialogue preview", results);
+
             GlassPanel composer = GetPrivateField<GlassPanel>(form, "inputComposer");
             TextBox input = GetPrivateField<TextBox>(form, "inputBox");
             Label placeholder = GetPrivateField<Label>(form, "inputPlaceholderLabel");
@@ -297,6 +335,21 @@ namespace IrohaAgentDesktop
                 Assert(dock.ClientRectangle.Contains(divider.Bounds) && dock.ClientRectangle.Contains(wave.Bounds) && dock.ClientRectangle.Contains(engine.Bounds), label + " contains voice telemetry", results);
                 Assert(state.Right + 8 <= divider.Left && divider.Right + 8 <= wave.Left, label + " separates caption, divider and waveform", results);
                 Assert(!state.Bounds.IntersectsWith(wave.Bounds) && !wave.Bounds.IntersectsWith(engine.Bounds) && wave.Bottom + 2 <= engine.Top, label + " prevents voice text and waveform overlap", results);
+            }
+        }
+
+        private static void CaptureScreen(Form form, string path)
+        {
+            string directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
+            form.Activate();
+            WaitForPaint();
+            using (var bitmap = new Bitmap(form.Width, form.Height))
+            using (Graphics graphics = Graphics.FromImage(bitmap))
+            {
+                Point origin = form.PointToScreen(Point.Empty);
+                graphics.CopyFromScreen(origin, Point.Empty, form.Size, CopyPixelOperation.SourceCopy);
+                bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
             }
         }
 

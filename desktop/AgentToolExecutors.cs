@@ -197,7 +197,7 @@ namespace IrohaAgentDesktop
         {
             string content = MemoryCapture.NormalizeText(AgentToolText.String(arguments, "content", ""));
             if (content.Length < 2 || LooksSensitive(content)) return Task.FromResult(AgentToolResult.Fail("memory_remember", "敏感信息或空内容不会写入记忆"));
-            if (content.Length > 360) content = content.Substring(0, 360).Trim();
+            if (content.Length > 360) content = UnicodeText.TruncateUtf16(content, 360).Trim();
             AgentMemory memory = MemoryStore.Load();
             string note = DateTime.Now.ToString("yyyy-MM-dd") + " 用户确认：" + content;
             string key = MemoryCapture.CanonicalizeStoredNote(note);
@@ -368,8 +368,8 @@ namespace IrohaAgentDesktop
 
         internal static string Limit(string value, int max)
         {
-            string text = value ?? "";
-            return text.Length <= max ? text : text.Substring(0, max) + "…";
+            string text = UnicodeText.NormalizeForDisplay(value);
+            return text.Length <= max ? text : UnicodeText.TruncateUtf16(text, max) + "…";
         }
 
         internal static int KeywordScore(string text, string query)
@@ -1132,7 +1132,8 @@ namespace IrohaAgentDesktop
                 }
                 else { error = "暂不支持该文档格式"; return false; }
                 text = Regex.Replace(text ?? "", @"\r\n?", "\n").Trim();
-                if (text.Length > maxCharacters) text = text.Substring(0, maxCharacters) + "…";
+                text = UnicodeText.NormalizeForDisplay(text);
+                if (text.Length > maxCharacters) text = UnicodeText.TruncateUtf16(text, maxCharacters) + "…";
                 return true;
             }
             catch (Exception ex) { error = AgentToolText.SafeError(ex); return false; }

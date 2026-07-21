@@ -1,0 +1,20 @@
+Iroha Agent v2.3 local maintenance QA
+Date: 2026-07-21
+
+PASS 764
+FAIL 0
+
+agent-tools.txt: 61 pass, 0 fail
+functional.txt: 69 pass, 0 fail
+memory-store.txt: 18 pass, 0 fail
+model-providers.txt: 151 pass, 0 fail
+settings-ui.txt: 429 pass, 0 fail
+voice-bootstrap.txt: 36 pass, 0 fail
+
+Additional live validation:
+- GPT-SoVITS real synthesis health probe passed.
+- Full multi-sentence Japanese WAV generation and SoundPlayer playback passed.
+- Voice service remained usable after the parent QA process exited.
+- Post-parent /tts response: RIFF/WAVE, 190764 bytes, 4.56 seconds.
+- Detached launcher writes stdout/stderr to os.devnull and creates no conversation log.
+- Unicode typewriter preserves emoji, ZWJ sequences, flags, and surrogate integrity.

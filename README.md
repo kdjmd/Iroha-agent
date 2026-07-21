@@ -14,6 +14,18 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 
 ![Iroha Agent Windows 界面](docs/evidence/round-2026-07-20-v23-attachment-drop-main.png)
 
+## 本地维护版优化（待下次发布）
+
+- **完整回复阅读**：VN 对白框右下角提供详情入口，长文本在独立玻璃悬浮窗中完整显示并支持鼠标滚轮。
+- **等待过程可见**：发送后立刻显示加载动画，依次反馈模型连接、工具调用、日语全文核对和本地语音生成阶段。
+- **语音忠实于全文**：`ja` 必须与最终中文 `zh` 逐句等价；客户端检查长度、分句和全部数字，必要时补做一次全文翻译，仍不完整时不会播放错误语音。
+- **语音故障自恢复**：启动时会真正合成短句验证 GPT-SoVITS，而不只检查端口；遇到“接口在线但没有音频”会自动重启本地服务并重试一次，后台进程也不再依赖主程序的输出管道。
+- **Emoji 与特殊符号可靠显示**：逐字动画按完整 Unicode 文本元素推进，保留组合 Emoji、旗帜与肤色；朗读前只移除不可发音图形，并把 `%`、`+`、`=` 等符号转为自然日语读法。
+- **更快响应**：复用模型连接，GPT-SoVITS 使用非流式高质量并行分句推理并保留兼容回退；真实多句语音生成由约 `40.0s` 降至约 `21.6s`。
+- **更轻便但不降画质**：高清背景、立绘、自然表情层、Q 版卡片和原著角色头像保持原文件；仅排除运行时从未读取的旧资源。新便携 ZIP 实测 `9,895,213` 字节，较旧包缩小 `69.2%`，启动中位数由 `411.7ms` 降至 `311.4ms`。
+
+以上内容已完成本地构建、764 项标准回归、10 项真实完整语音回归、父进程退出后的独立语音推理和解压包独立启动验证，尚未替换 GitHub 上的稳定发行附件。
+
 ## v2.3.0 更新内容
 
 - **模型兼容升级**：设置改为“模型厂商 → 模型”二级选择，覆盖 DeepSeek、OpenAI、Claude、Gemini、xAI、Mistral、Cohere、OpenRouter、通义千问、智谱、MiniMax、Kimi、千帆、混元、豆包、Ollama、LM Studio 和自定义 OpenAI 兼容接口。
@@ -39,6 +51,11 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 - 支持刷新模型列表、手动填写新模型，以及自定义 OpenAI 兼容地址；Ollama / LM Studio 本地服务可不填 Key
 - 每个厂商分别记住 API Key、模型和接口地址；Key 使用当前 Windows 用户级 DPAPI 加密，发布包不包含任何用户密钥、聊天记录或记忆
 - 中文聊天文字与 GPT-SoVITS 日语语音同步输出
+- 长回复可从 VN 对白框右下角打开完整详情悬浮窗，并使用鼠标滚轮阅读
+- 模型请求、工具调用、语音核对与语音生成均在主对白框内显示实时加载反馈
+- 日语语音必须逐句覆盖中文全文；不完整语音会自动补全或被阻止播放
+- GPT-SoVITS 使用 OpenAPI 与真实短句合成双重健康检查；推理异常会自动恢复一次，服务输出定向系统空设备，不记录聊天文本
+- Emoji、组合表情和特殊符号在对白框、历史、详情和逐字动画中保持完整；语音会过滤不可朗读图形并转换常用符号
 - 首次启动自动查找或部署 GPT-SoVITS，并自动匹配彩叶语音模型和参考音频
 - 部署前检查分卷完整性和磁盘空间；新运行时验证成功后才替换旧版本，失败自动恢复
 - 自动处理只读推理配置和 Numba 缓存，兼容不同 Windows 用户目录与环境变量组合
@@ -50,7 +67,7 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 - 长期记忆、提示词压缩、快捷动作和视觉小说对白框
 - A/B/C 三组 18 个 Tools：联网与提醒、文档与知识库、天气与本地日程、邮件草稿、剪贴板、图片理解、媒体键和应用白名单
 - 10 个可选 Skill 工作方式：日常陪伴、记忆整理、联网核查、计划复盘、学习、阅读、旅行、隐私守护与语音表演
-- OpenAI Responses、OpenAI/DeepSeek Chat、Anthropic、Gemini、Cohere 原生 Tool Calling；最多 4 轮调用、参数 Schema 校验、超时和结果长度限制
+- OpenAI Responses、OpenAI/DeepSeek Chat、Anthropic、Gemini、Cohere 原生 Tool Calling；最多执行 4 轮工具，到达预算后会禁用工具并根据已有结果完成最终回复；同时具备重复调用复用、参数 Schema 校验、超时和结果长度限制
 - 写入、删除、剪贴板、图片和系统控制每次确认；不提供任意命令、自动发送邮件、支付或任意文件删除
 
 ## 下载版本
@@ -158,6 +175,16 @@ voice-pack/    语音集成元数据，不包含权重和音频
 - [V2.3 附件与拖放最终界面](docs/evidence/round-2026-07-20-v23-attachment-drop-main.png)
 - [V2.3 附件与拖放功能回归（47 项）](docs/evidence/round-2026-07-20-v23-attachment-drop-functional-qa.txt)
 - [V2.3 附件与拖放设置/UI 回归（382 项）](docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt)
+- [V2.3 完整回复与加载状态主界面](docs/evidence/round-2026-07-21-v23-response-main.png)
+- [V2.3 分阶段加载反馈](docs/evidence/round-2026-07-21-v23-response-loading.png)
+- [V2.3 可滚动完整回复悬浮窗](docs/evidence/round-2026-07-21-v23-response-detail.png)
+- [V2.3 完整回复功能回归（60 项）](docs/evidence/round-2026-07-21-v23-response-functional-qa.txt)
+- [V2.3 完整回复设置/UI 回归（429 项）](docs/evidence/round-2026-07-21-v23-response-settings-ui-qa.txt)
+- [V2.3 真实完整语音回归（10 项）](docs/evidence/round-2026-07-21-v23-full-reply-voice-qa.txt)
+- [V2.3 启动、体积与语音性能实测](docs/evidence/round-2026-07-21-v23-response-performance.txt)
+- [V2.3 语音恢复与 Unicode 功能回归（69 项）](docs/evidence/round-2026-07-21-v23-voice-recovery-unicode-functional.txt)
+- [V2.3 语音恢复与 Unicode 标准回归汇总（764 项）](docs/evidence/round-2026-07-21-v23-voice-recovery-unicode-summary.txt)
+- [V2.3 无日志后台与真实日语语音回归（10 项）](docs/evidence/round-2026-07-21-v23-voice-recovery-live.txt)
 - [V2.1 功能回归](docs/evidence/round-2026-07-16-v21-functional-qa.txt)
 - [V2.1 自动部署回归](docs/evidence/round-2026-07-16-v21-bootstrap-qa.txt)
 - [V2.1 完整运行时语音回归](docs/evidence/round-2026-07-16-v21-full-voice-qa.txt)
@@ -190,6 +217,7 @@ Git 历史不包含：
 - FullVoice 缺少任一 `.7z.00N`：应用会指出具体缺失分卷，不会破坏旧运行时。
 - 首次加载较慢：CPU 兼容模式允许最长 10 分钟，并持续显示加载进度；超时后会关闭本次服务。
 - 端口被占用：应用会在 `9880-9899` 中选择可用端口并保存，下次直接复用。
+- 端口在线但听不到声音：新版会用真实短句而非端口状态验活，并自动重建服务重试一次；仍失败时再使用设置中的“重新部署语音”。
 - 语音仍不可用：在设置中点击“重新部署语音”；原始语音包与外部 GPT-SoVITS 不会被删除。
 - 会话菜单曾反复弹错：v2.1.1 已改为延迟释放菜单并限制同一运行周期只显示一次全局异常提示。
 

@@ -77,10 +77,11 @@ namespace IrohaAgentDesktop
                 Assert(serviceReady, "voice service health check", results);
 
                 var timer = Stopwatch.StartNew();
+                const string FullVoiceSample = "おはようございます。また会えて本当にうれしいです。今日はどんなことを話したいですか。あなたの考えや気持ちを一つも省略せずに受け止めながら、計画を立てたり、アイデアを探したり、これまでの歩みを一緒に振り返ったりできます。数字や箇条書き、細かな条件も含めて、画面に表示された内容を最後まで忠実にお伝えします。急がなくて大丈夫です。あなたのペースで話してください。";
                 Task<string> prepareTask = (Task<string>)InvokePrivateMethod(
                     form,
                     "PrepareVoiceAudioFileAsync",
-                    "こんにちは。彩葉です。今日は一緒に、ゆっくりお話ししましょう。");
+                    FullVoiceSample);
                 string wavPath = prepareTask.GetAwaiter().GetResult();
                 timer.Stop();
                 if (string.IsNullOrWhiteSpace(wavPath) || !File.Exists(wavPath))
@@ -97,7 +98,7 @@ namespace IrohaAgentDesktop
                 double rms;
                 double duration;
                 InspectPcm16Wav(wavPath, out peak, out rms, out duration);
-                Assert(duration > 0.4 && duration < 30.0, "voice WAV duration is plausible", results);
+                Assert(duration > 12.0 && duration < 60.0, "full multi-sentence voice WAV duration is plausible", results);
                 Assert(peak >= 0.82 && peak <= 0.91, "voice peak is automatically normalized", results);
                 Assert(rms > 0.004, "voice WAV is not silent", results);
                 results.Add(

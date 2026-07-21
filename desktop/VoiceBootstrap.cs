@@ -1195,7 +1195,7 @@ namespace IrohaAgentDesktop
         {
             string clean = Regex.Replace(value ?? "", @"\s+", " ").Trim();
             if (clean.Length <= maxLength) return clean;
-            return clean.Substring(0, Math.Max(0, maxLength - 1)) + "…";
+            return UnicodeText.TruncateUtf16(clean, Math.Max(0, maxLength - 1)) + "…";
         }
 
         private static string FormatGiB(long bytes)

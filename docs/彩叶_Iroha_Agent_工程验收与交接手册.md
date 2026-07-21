@@ -26,6 +26,10 @@
 - OpenAI Responses / Chat、Anthropic、Gemini、Cohere 与 Azure OpenAI 协议适配。
 - 模型列表刷新、手动模型 ID、自定义 OpenAI 兼容地址与本地 Ollama / LM Studio。
 - 中文文字回复、日语 GPT-SoVITS 语音播放。
+- GPT-SoVITS OpenAPI 与真实短句推理双重健康检查、失败后一次自动恢复，以及脱离主程序输出管道的无日志后台运行。
+- 对话、历史、详情、记忆和逐字动画使用 Unicode 文本元素；组合 Emoji 不拆分，朗读前安全过滤图形并转换常用符号。
+- VN 对白框完整回复入口、可滚动详情悬浮窗与模型/工具/语音分阶段加载反馈。
+- 中文显示稿与日语语音稿全文等价约束、结构完整性校验、一次修复和错误语音阻断。
 - 首次启动自动发现或部署 GPT-SoVITS。
 - GSV 模型、参考音频、提示文本和推理配置自动匹配。
 - 语音部署实时进度动画和失败降级。
@@ -168,7 +172,7 @@ Python 子进程不得通过旧版 `.NET ProcessStartInfo.EnvironmentVariables` 
 | 私人知识库 | 与设置同目录的 `knowledge-base.json` | 授权文档的本地文本片段与来源 |
 | 托管运行时 | `%LOCALAPPDATA%\IrohaLocalAgent\VoiceRuntime` | 解压后的 GPT-SoVITS |
 | 托管模型 | `%LOCALAPPDATA%\IrohaLocalAgent\Voice\iroha` | 权重、参考音频和 YAML |
-| 语音缓存 | `%LOCALAPPDATA%\IrohaLocalAgent\VoiceCache` | Python 引导脚本与 Numba 缓存 |
+| 语音缓存 | `%LOCALAPPDATA%\IrohaLocalAgent\VoiceCache` | 无日志 Python 引导脚本与 Numba 缓存 |
 | 临时语音 | `%TEMP%\iroha-agent-voice-*.wav` | 播放后删除 |
 | 崩溃日志 | `%LOCALAPPDATA%\IrohaLocalAgent\crash.log` | 仅在首个未处理异常时写入，不在主界面展示或上传 |
 
@@ -207,7 +211,7 @@ cd desktop
 构建成功条件：
 
 - `desktop/dist/IrohaAgent.exe` 存在。
-- `desktop/dist/assets` 包含角色帧、表情与 UI 图。
+- `desktop/dist/assets` 只包含 20 项运行时白名单资源：高清背景、主立绘、4 张表情层、Q 版卡片与 13 张会话头像。
 - 编译器返回码为 0。
 - 发布目录不包含用户设置和密钥。
 
@@ -271,8 +275,13 @@ cd desktop
 | U-03 | `980×552` 至 `1920×1080` 的快捷操作、输入、语音和能力卡片无黑边、残影或交叠 | 通过 | 2026-07-19 UI Stability 261 项 QA 与四张截图 |
 | U-04 | 150% Windows 缩放下快捷按钮无方形底色，附件与发送按钮保持圆形、分离且不贴边 | 通过 | 2026-07-20 Bottom UI 338 项 QA、实机截图与前后对比 |
 | U-05 | 附件常态只显示无白边回形针，发送纸飞机独立绘制且不重影；整个会话输入栏可接收受支持的单文件拖放，附件状态和错误反馈完整 | 通过 | 2026-07-20 Attachment Drop；684 项统一回归，其中 47 项功能 QA、382 项 UI QA，并完成 1920×1080 D 盘实机截图复核 |
+| U-06 | 对白框详情入口在 8 组窗口尺寸下不压住正文；长回复滚动窗、分阶段加载动画和异常退出加载态完整 | 通过 | 2026-07-21 Response UX；60 项功能 QA、429 项 Settings UI QA 与 4 张截图 |
+| V-05 | 日语语音逐句覆盖中文全文，不完整文本补全一次后仍失败则阻止播放；完整多句 WAV 可生成、校验和播放 | 通过 | 2026-07-21 Full Reply Voice QA；25.48 秒 WAV、10 项真实回归 |
+| U-07 | Emoji、肤色、旗帜和 ZWJ 组合在对话、历史、详情与逐字动画中保持完整；无孤立 UTF-16 代理项 | 通过 | 2026-07-21 Voice Recovery & Unicode；69 项功能 QA、764 项统一回归 |
+| V-06 | GPT-SoVITS 使用真实推理验活；假在线时自动恢复，主程序退出后服务仍可生成，且不持久化语音文本日志 | 通过 | 2026-07-21 Voice Recovery；10 项真实回归及退出后独立 `/tts` 验证 |
 | P-01 | Portable ZIP 与哈希 | 通过 | 发布脚本 QA |
 | P-02 | FullVoice 五分卷与哈希 | 通过 | 发布脚本 QA |
+| P-03 | 不重压缩高清素材的运行时资源白名单、启动与体积优化 | 通过 | 2026-07-21 Performance；ZIP 9,895,213 字节，启动中位数 311.4 ms，解压包独立启动通过 |
 
 ## 10. 验收证据索引
 
@@ -309,6 +318,17 @@ docs/evidence/round-2026-07-20-v23-attachment-drop-main.png
 docs/evidence/round-2026-07-20-v23-attachment-drop-control.png
 docs/evidence/round-2026-07-20-v23-attachment-drop-functional-qa.txt
 docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt
+docs/evidence/round-2026-07-21-v23-response-main.png
+docs/evidence/round-2026-07-21-v23-response-loading.png
+docs/evidence/round-2026-07-21-v23-response-detail.png
+docs/evidence/round-2026-07-21-v23-response-minimum.png
+docs/evidence/round-2026-07-21-v23-response-functional-qa.txt
+docs/evidence/round-2026-07-21-v23-response-settings-ui-qa.txt
+docs/evidence/round-2026-07-21-v23-full-reply-voice-qa.txt
+docs/evidence/round-2026-07-21-v23-response-performance.txt
+docs/evidence/round-2026-07-21-v23-voice-recovery-unicode-functional.txt
+docs/evidence/round-2026-07-21-v23-voice-recovery-unicode-summary.txt
+docs/evidence/round-2026-07-21-v23-voice-recovery-live.txt
 ```
 
 ## 11. 故障排查
@@ -320,7 +340,7 @@ docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt
 | 部署磁盘不足 | `%LOCALAPPDATA%` 所在磁盘剩余空间 | 至少释放 20 GB |
 | 服务启动超时 | CPU 占用、杀毒软件、Numba 缓存 | 等待进度；应用最长 10 分钟后清理本次进程，可重新部署 |
 | 端口被占用 | `9880-9899` 是否有其他服务 | 应用自动选择可用端口并保存，不需要手工改端口 |
-| OpenAPI 可访问但无音频 | 是否存在真实 `/tts`、YAML 权重路径和参考音频 | 点击重新部署；应用不会把无关本地服务误判为 GPT-SoVITS |
+| OpenAPI 可访问但无音频 | 是否存在真实 `/tts`、YAML 权重路径和参考音频 | 应用先执行真实短句探针并自动恢复一次；仍失败再点击重新部署 |
 | 记忆突然为空 | `memory.json.bak` 与 `.corrupt` | 应用会自动从备份恢复；保留损坏副本供人工核查 |
 | 语音很小或静音 | WAV 长度、峰值和 RMS | 应用会拒绝无效/近静音响应并显示不可用 |
 | 只有文字没有声音 | 语音开关、服务状态、系统输出设备 | 开启日语语音并试听 |
@@ -395,6 +415,7 @@ docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt
 | P2 | 日历仅本地、知识库仅关键词检索 | 先设计 OAuth/撤销流程和可选嵌入层，再增加云同步与语义检索 |
 | P2 | URL 连接前只做 DNS 预检 | 后续采用可固定解析结果的网络栈，进一步降低 DNS rebinding 风险 |
 | P2 | GPT-SoVITS 诊断仅保存在内存 | 可选诊断模式写入大小受限、自动轮换且不含聊天内容的日志 |
+| P2 | 日语全文校验以提示词、长度、分句和数字覆盖为主 | 后续可增加本地双语句对齐器；在此之前校验失败时继续坚持不播放，而不是放宽完整性要求 |
 | P2 | CPU 默认启动较慢 | 增加经过探测的 GPU 可选模式 |
 | P2 | 首次部署不可暂停/取消 | 增加可恢复解压和取消令牌 |
 | P2 | 缺少代码签名 | 发布前接入签名证书和 SmartScreen 流程 |
@@ -406,8 +427,10 @@ docs/evidence/round-2026-07-20-v23-attachment-drop-settings-ui-qa.txt
 - [ ] `desktop/build.ps1` 编译通过。
 - [ ] 功能、Bootstrap 和真实语音 QA 全部通过。
 - [ ] Agent Tools 61 项回归和能力中心截图 QA 全部通过。
-- [ ] Settings UI 382 项多尺寸、透明底色、圆角 Region、附件图标归属、拖放命中区与像素边缘回归全部通过。
-- [ ] Functional QA 47 项主要交互回归全部通过，包括文件拖放、附件提示和非法格式拦截。
+- [ ] Settings UI 429 项多尺寸、透明底色、圆角 Region、详情入口、加载状态、附件图标归属、拖放命中区与像素边缘回归全部通过。
+- [ ] Functional QA 69 项主要交互回归全部通过，包括完整回复、语音完整性、Unicode/Emoji、文件拖放、附件提示和非法格式拦截。
+- [ ] 真实完整语音 10 项回归通过，并确认多句 WAV 时长、非静音、响度、播放和清理。
+- [ ] 统一回归 764 项全部通过，并确认主程序退出后 GPT-SoVITS 仍可独立完成真实 `/tts` 请求且不生成对话日志。
 - [ ] Portable 与 FullVoice Release 均生成 SHA-256。
 - [ ] Git 历史不含 API Key、用户设置、权重、音频和运行时。
 - [ ] FullVoice 全部分卷齐全并可从 `.001` 解压。

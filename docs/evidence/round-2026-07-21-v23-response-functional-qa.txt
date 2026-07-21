@@ -1,0 +1,60 @@
+PASS: occupied voice port is detected
+PASS: released voice port becomes available
+PASS: configured local voice port is preserved
+PASS: borderless window
+PASS: declared minimum viewport
+PASS: primary composer and voice playback visible
+PASS: VN dialogue populated
+PASS: dialogue detail action is visible and contained
+PASS: dialogue text clears the detail action
+PASS: loading feedback owns the dialogue content area
+PASS: primary controls inside standard viewport
+PASS: composer supports file drop on every visible surface
+PASS: attachment button is paperclip-only
+PASS: loading feedback replaces stale dialogue while waiting
+PASS: loading feedback exposes the active phase
+PASS: reply restores dialogue and detail action
+PASS: full reply is preserved independently of clipped preview
+PASS: detail window provides native wheel scrolling
+PASS: detail window shows the complete reply
+PASS: model contract requires full Japanese speech
+PASS: complete Japanese speech passes integrity validation
+PASS: short placeholder speech is rejected
+PASS: speech missing source numbers is rejected
+PASS: supported document drag is accepted
+PASS: valid drag highlights the composer
+PASS: dropped document becomes the pending attachment
+PASS: dropped document name appears in the composer hint
+PASS: attachment control visibly confirms the pending file
+PASS: unsupported attachment is rejected with feedback
+PASS: four quick actions
+PASS: quick action populates composer
+PASS: conversation history populated
+PASS: pin state toggles
+PASS: pinned conversation moves first
+PASS: pin state restores
+PASS: conversation menu opens
+PASS: conversation menu exposes rename, pin, and delete
+PASS: conversation menu survives the closing input message
+PASS: conversation menu disposes after deferred cleanup
+PASS: settings tool opens and selects the drawer
+PASS: settings exposes provider-first model selection
+PASS: mainstream provider catalog is available
+PASS: active provider has a model selection
+PASS: provider selection updates active profile
+PASS: provider keys remain isolated
+PASS: settings exposes voice redeploy
+PASS: voice redeploy stays inside settings drawer
+PASS: voice redeploy does not overlap prompt optimization
+PASS: settings pages switch without stacked controls
+PASS: settings drawer clears the right tool rail
+PASS: settings drawer clears the voice dock
+PASS: settings drawer closes
+PASS: appearance tool provides selected feedback
+PASS: model badge clears the product title
+PASS: model badge keeps title spacing
+PASS: model badge state accepts Pro
+PASS: speaking state activates
+PASS: compact viewport hides secondary cards
+PASS: compact viewport preserves primary workflow
+PASS: primary controls inside compact viewport
