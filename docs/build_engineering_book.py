@@ -452,7 +452,7 @@ def build(markdown_path: Path, output_path: Path):
 
     core = document.core_properties
     core.title = "彩叶 Iroha Agent Windows 工程验收与交接手册"
-    core.subject = "Iroha Agent 2.3.0 Windows engineering acceptance and handover"
+    core.subject = "Iroha Agent 2.3.1 Windows engineering acceptance and handover"
     core.author = "Iroha Agent Project"
     core.keywords = "Iroha Agent, Windows, engineering, acceptance, handover, GPT-SoVITS, tools, skills"
     core.comments = "Generated from the repository Markdown source."

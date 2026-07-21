@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [string]$Version = "2.3.0",
+  [string]$Version = "2.3.1",
   [string]$OutputRoot = (Join-Path ([Environment]::GetFolderPath("Desktop")) "IrohaAgent-GitHub-Releases"),
   [switch]$FullVoice,
   [string]$RuntimeArchive = $env:IROHA_RUNTIME_ARCHIVE,
@@ -181,7 +181,8 @@ try {
     "- FullVoice.7z.001 and later volumes: download all parts and extract the .001 file with 7-Zip.",
     "- Android APK is intentionally not included in this release.",
     "- Release files contain no API key, chat history, memory, or user settings.",
-    "- v2.3.0 adds 18 permission-controlled Tools and 10 optional Skills in capability bundles A, B, and C.",
+    "- v2.3.1 fixes long-reply reading, phased loading feedback, the four-round tool budget, GPT-SoVITS false-health recovery, and Unicode/emoji rendering.",
+    "- Includes the 18 permission-controlled Tools and 10 optional Skills introduced in v2.3.0.",
     "- The 2026-07-20 maintenance build removes tool-card black edges, quick-action square backfills, composer seams, clipped action circles, white attachment backing, and the overlapping attachment/send glyph.",
     "- Images and common documents can be selected with the paperclip or dropped anywhere on the conversation composer; attachment state and validation feedback are shown immediately.",
     "- The voice preview keeps its play control and caption separate, and safely hides telemetry as one group when space is limited.",
@@ -189,7 +190,9 @@ try {
     "- Japanese speech must cover the full Chinese reply; incomplete translations are repaired once and otherwise blocked instead of playing unrelated audio.",
     "- GPT-SoVITS uses high-quality parallel sentence inference with a low-resource compatibility fallback, while text reveal tracks the actual WAV duration.",
     "- Unused legacy UI shells and frame fallbacks are excluded without recompressing or downscaling active visual assets.",
-    "- Layout QA covers 980x552 through 1920x1080; the maintenance build passed 744 standard assertions plus 10 real full-reply voice checks.",
+    "- GPT-SoVITS health checks perform real synthesis, retry once after local recovery, detach from parent output pipes, and do not persist conversation logs.",
+    "- Unicode text-element handling preserves emoji, flags, skin tones, and joined sequences; speech preprocessing removes non-pronounceable graphics and reads common symbols naturally.",
+    "- Layout QA covers 980x552 through 1920x1080; the release passed 764 standard assertions plus 10 real full-reply voice checks.",
     "- Native tool calling is adapted for OpenAI Responses, OpenAI/DeepSeek Chat, Anthropic, Gemini, and Cohere.",
     "- Search, memory, reminders, document/PDF reading, local knowledge, weather, calendar, drafts, image analysis, media controls, and app allowlists are included.",
     "- Writes, deletion, clipboard, images, media keys, and app launches require one-shot confirmation.",

@@ -1,12 +1,12 @@
 # Iroha Agent
 
-[![Version](https://img.shields.io/badge/version-v2.3.0-43c6d7)](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0)
+[![Version](https://img.shields.io/badge/version-v2.3.1-43c6d7)](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.1)
 [![Windows build](https://github.com/kdjmd/Iroha-agent/actions/workflows/windows-build.yml/badge.svg)](https://github.com/kdjmd/Iroha-agent/actions/workflows/windows-build.yml)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-4a90c2)](#windows-构建)
 
 Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，支持多厂商大模型 API、本地 GPT-SoVITS 日语语音、自然逐帧角色动画、长期记忆、提示词压缩、会话管理，以及经过本地权限控制的 Tools 与 Skills。
 
-**当前稳定版：v2.3.0。** [打开下载页](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0) · [查看完整发行说明](docs/RELEASE_NOTES_v2.3.0.md)
+**当前稳定版：v2.3.1。** [打开下载页](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.1) · [查看完整发行说明](docs/RELEASE_NOTES_v2.3.1.md)
 
 工程交接与本地归档入口：[工程归档索引](docs/PROJECT_ARCHIVE_INDEX.md)
 
@@ -14,7 +14,7 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 
 ![Iroha Agent Windows 界面](docs/evidence/round-2026-07-20-v23-attachment-drop-main.png)
 
-## 本地维护版优化（待下次发布）
+## v2.3.1 回复、语音与 Unicode 可靠性更新
 
 - **完整回复阅读**：VN 对白框右下角提供详情入口，长文本在独立玻璃悬浮窗中完整显示并支持鼠标滚轮。
 - **等待过程可见**：发送后立刻显示加载动画，依次反馈模型连接、工具调用、日语全文核对和本地语音生成阶段。
@@ -24,7 +24,7 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 - **更快响应**：复用模型连接，GPT-SoVITS 使用非流式高质量并行分句推理并保留兼容回退；真实多句语音生成由约 `40.0s` 降至约 `21.6s`。
 - **更轻便但不降画质**：高清背景、立绘、自然表情层、Q 版卡片和原著角色头像保持原文件；仅排除运行时从未读取的旧资源。新便携 ZIP 实测 `9,895,213` 字节，较旧包缩小 `69.2%`，启动中位数由 `411.7ms` 降至 `311.4ms`。
 
-以上内容已完成本地构建、764 项标准回归、10 项真实完整语音回归、父进程退出后的独立语音推理和解压包独立启动验证，尚未替换 GitHub 上的稳定发行附件。
+以上内容已完成本地构建、764 项标准回归、10 项真实完整语音回归、父进程退出后的独立语音推理和解压包独立启动验证。
 
 ## v2.3.0 更新内容
 
@@ -72,16 +72,16 @@ Windows 本地娱乐陪伴向聊天 Agent。主界面采用视觉小说布局，
 
 ## 下载版本
 
-请从 [Iroha Agent v2.3.0 Release](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.0) 下载。GitHub Release 提供两个 Windows 版本：
+请从 [Iroha Agent v2.3.1 Release](https://github.com/kdjmd/Iroha-agent/releases/tag/v2.3.1) 下载。GitHub Release 提供两个 Windows 版本：
 
 | 版本 | 内容 | 适用场景 |
 |---|---|---|
-| `IrohaAgent-Windows-v2.3.0-Portable.zip` | 应用与高清视觉资源，约 31 MB | 已安装 GPT-SoVITS，或只需要文字聊天 |
-| `IrohaAgent-Windows-v2.3.0-FullVoice.7z.001` 等分卷 | 应用、完整 GPT-SoVITS 运行时、彩叶模型与 7-Zip | 新电脑首次安装，希望自动启用语音 |
+| `IrohaAgent-Windows-v2.3.1-Portable.zip` | 应用与高清视觉资源，约 10 MB | 已安装 GPT-SoVITS，或只需要文字聊天 |
+| `IrohaAgent-Windows-v2.3.1-FullVoice.7z.001` 等分卷 | 应用、完整 GPT-SoVITS 运行时、彩叶模型与 7-Zip | 新电脑首次安装，希望自动启用语音 |
 
 FullVoice 需要下载全部分卷，并使用 7-Zip 从 `.001` 解压。首次语音部署需要约 14 GB 安装空间，建议至少预留 20 GB 可用空间。
 
-从 v2.1.x 或 v2.2.x 升级时，先关闭旧程序，再完整解压 v2.3.0 到新目录运行。用户设置和记忆会从 `%LOCALAPPDATA%` 或旧版 `%APPDATA%` 自动读取，无需覆盖旧安装目录；API Key 若来自另一台电脑或 Windows 账户，需要重新填写。
+从 v2.1.x、v2.2.x 或 v2.3.0 升级时，先关闭旧程序，再完整解压 v2.3.1 到新目录运行。用户设置和记忆会从 `%LOCALAPPDATA%` 或旧版 `%APPDATA%` 自动读取，无需覆盖旧安装目录；API Key 若来自另一台电脑或 Windows 账户，需要重新填写。
 
 本次仓库和 Release 只提供 Windows 版本，不提供 APK。
 

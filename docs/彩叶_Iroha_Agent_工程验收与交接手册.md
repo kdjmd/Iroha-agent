@@ -5,7 +5,7 @@
 | 项目 | 内容 |
 |---|---|
 | 产品 | 彩叶 Iroha Agent |
-| 基线版本 | 2.3.0 |
+| 基线版本 | 2.3.1 |
 | 平台 | Windows 10/11 x64 |
 | 文档日期 | 2026-07-18 |
 | 主程序 | .NET Framework WinForms |
@@ -218,14 +218,14 @@ cd desktop
 ### 8.2 Release
 
 ```powershell
-.\tools\build-windows-release.ps1 -Version 2.3.0
+.\tools\build-windows-release.ps1 -Version 2.3.1
 ```
 
 完整语音版：
 
 ```powershell
 .\tools\build-windows-release.ps1 `
-  -Version 2.3.0 `
+  -Version 2.3.1 `
   -FullVoice `
   -RuntimeArchive "C:\path\GPT-SoVITS-runtime.7z" `
   -VoicePackage "C:\path\iroha-model.zip"
@@ -452,4 +452,4 @@ docs/evidence/round-2026-07-21-v23-voice-recovery-live.txt
 
 建议签署文本：
 
-> Iroha Agent v2.3.0 Windows 基线在构建、主要功能、多厂商模型与原生 Tool 协议、DPAPI 凭据保护、文件/网络权限边界、视觉小说界面、事务式语音部署、安全重新部署、记忆恢复、文档与知识库、真实语音生成和发布打包方面通过工程验收。各厂商真实计费请求、目标设备长时稳定性与第三方素材授权由发布者完成最终确认。
+> Iroha Agent v2.3.1 Windows 基线在构建、主要功能、多厂商模型与原生 Tool 协议、DPAPI 凭据保护、文件/网络权限边界、视觉小说界面、事务式语音部署、安全重新部署、记忆恢复、Unicode/Emoji、文档与知识库、真实语音生成和发布打包方面通过工程验收。各厂商真实计费请求、目标设备长时稳定性与第三方素材授权由发布者完成最终确认。
